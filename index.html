@@ -232,6 +232,7 @@ tr:last-child td{border-bottom:0}
 </header>
 <main>
   <div class="banner" id="banner">Carregando dados do mudário…</div>
+  <div id="retry" hidden><button class="btn primary" type="button" onclick="location.reload()">Tentar de novo</button></div>
   <div id="view"></div>
 </main>
 <div id="modal"></div>
@@ -747,6 +748,10 @@ window.addEventListener("hashchange", route);
 route();
 
 /* ---------- data (Supabase) ---------- */
+const APP_VERSION="v4";
+function fail(msg){ setBanner(msg+" ["+APP_VERSION+"]"); const r=$("#retry"); if(r) r.hidden=false; }
+window.addEventListener("error",e=>{ if(e.target&&e.target.tagName) return; fail("Erro no app: "+(e.message||"desconhecido")); });
+window.addEventListener("unhandledrejection",e=>{ const m=(e.reason&&e.reason.message)||String(e.reason||""); if(/Failed to fetch|NetworkError|Load failed/i.test(m)) fail("Sem conexão com o banco de dados. Verifique a internet."); else fail("Erro no app: "+m); });
 function makeDB(sb){
   const L={tests:[],corals:[]}, C={tests:new Map(),corals:new Map()};
   const emit=col=>{ const docs=[...C[col].entries()].map(([id,d])=>({id,exists:true,data:()=>d})); L[col].forEach(f=>f({docs,metadata:{fromCache:false}})); };
@@ -763,12 +768,15 @@ function makeDB(sb){
 (async ()=>{
   if(!window.supabase){ setBanner("Não foi possível carregar o app. Verifique a conexão e recarregue."); return; }
   if(/type=recovery/.test(location.hash+location.search)){ S.recovery=true; S.recoveryForced=true; }
-  const sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+  const noLock=async(name,timeout,fn)=>await fn();
+  let sb;
+  try{ sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,lock:noLock}}); }
+  catch(e){ fail("Erro ao iniciar: "+(e&&e.message||e)); return; }
   S.sb=sb; S.db=makeDB(sb);
   let subscribed=false;
   const start=()=>{
     if(subscribed){ S.db.reload(); return; } subscribed=true;
-    const timer=setTimeout(()=>setBanner("Os dados ainda não chegaram. Verifique a conexão."),10000);
+    const timer=setTimeout(()=>fail("Os dados ainda não chegaram. Verifique a conexão."),10000);
     let gt=false,gc=false; const done=()=>{ if(gt&&gc){ clearTimeout(timer); setBanner(""); } };
     S.db.collection("tests").onSnapshot(s=>{ S.tests=s.docs.map(d=>Object.assign({id:d.id},d.data())); gt=true; done(); render(); }, e=>{ clearTimeout(timer); setBanner(errMsg(e)); });
     S.db.collection("corals").onSnapshot(s=>{
@@ -782,7 +790,11 @@ function makeDB(sb){
       }
     }, e=>{ clearTimeout(timer); setBanner(errMsg(e)); });
   };
-  const {data:{session}}=await sb.auth.getSession();
+  let session=null;
+  try{
+    const r=await Promise.race([sb.auth.getSession(), new Promise((_,rej)=>setTimeout(()=>rej(new Error("tempo esgotado ao verificar o login")),9000))]);
+    session=r&&r.data?r.data.session:null;
+  }catch(e){ S.authReady=true; render(); fail("Não consegui verificar o login ("+(e&&e.message||e)+"). Verifique a internet e toque em Tentar de novo."); return; }
   S.session=session; S.authReady=true; setBanner("");
   if(session) start(); render();
   sb.auth.onAuthStateChange((ev,sess)=>{ const had=!!S.session; S.session=sess;
