@@ -216,7 +216,8 @@ tr:last-child td{border-bottom:0}
     <div class="brand">
       <h1>Mudário</h1>
       <span class="sub" id="sub">70 × 36 × 25 cm · AIO · ~50 L líquidos · softs e LPS</span>
-      <button class="btn sm ghost out" id="signout" data-act="signout" hidden>Sair</button>
+      <button class="btn sm ghost out" id="chpass" data-act="changepass" hidden>Trocar senha</button>
+      <button class="btn sm ghost" id="signout" data-act="signout" hidden>Sair</button>
     </div>
     <nav id="nav">
       <a href="#painel" data-v="painel">Painel</a>
@@ -417,18 +418,39 @@ function vVitrine(){
 }
 
 function vLogin(){
+  const m=S.authMode||"login";
+  if(m==="forgot") return `<form class="card login" id="forgotform">
+    <h2>Redefinir senha</h2>
+    <span class="small muted">Informe seu e-mail. Você vai receber um link para criar uma senha nova.</span>
+    <div class="field"><label for="f-email">E-mail</label><input id="f-email" name="email" type="email" autocomplete="email" required></div>
+    <button class="btn primary" type="submit">Enviar link</button>
+    <button class="btn ghost sm" type="button" data-act="authmode" data-m="login">Voltar para entrar</button>
+  </form>`;
+  const up=m==="signup";
   return `<form class="card login" id="loginform">
-    <h2>${S.signup?"Criar conta":"Entrar"}</h2>
-    <span class="small muted">${S.signup?"Use o e-mail dono do mudário. Você vai receber um link de confirmação.":"Entre para ver e editar o mudário."}</span>
+    <h2>${up?"Criar conta":"Entrar"}</h2>
+    <span class="small muted">${up?"Use o e-mail dono do mudário. Você vai receber um link de confirmação.":"Entre para ver e editar o mudário."}</span>
     <div class="field"><label for="l-email">E-mail</label><input id="l-email" name="email" type="email" autocomplete="email" required></div>
-    <div class="field"><label for="l-pass">Senha</label><input id="l-pass" name="password" type="password" minlength="8" autocomplete="${S.signup?"new-password":"current-password"}" required></div>
-    <button class="btn primary" type="submit">${S.signup?"Criar conta":"Entrar"}</button>
-    <button class="btn ghost sm" type="button" data-act="authmode">${S.signup?"Já tenho conta":"Primeiro acesso? Criar conta"}</button>
+    <div class="field"><label for="l-pass">Senha</label><input id="l-pass" name="password" type="password" minlength="8" autocomplete="${up?"new-password":"current-password"}" required></div>
+    <button class="btn primary" type="submit">${up?"Criar conta":"Entrar"}</button>
+    ${up?"":`<button class="btn ghost sm" type="button" data-act="authmode" data-m="forgot">Esqueci minha senha</button>`}
+    <button class="btn ghost sm" type="button" data-act="authmode" data-m="${up?"login":"signup"}">${up?"Já tenho conta":"Primeiro acesso? Criar conta"}</button>
+  </form>`;
+}
+function vNewPass(){
+  return `<form class="card login" id="newpassform">
+    <h2>Nova senha</h2>
+    <span class="small muted">Escolha uma senha com pelo menos 8 caracteres.</span>
+    <div class="field"><label for="n-pass">Nova senha</label><input id="n-pass" name="password" type="password" minlength="8" autocomplete="new-password" required></div>
+    <div class="field"><label for="n-pass2">Repita a nova senha</label><input id="n-pass2" name="password2" type="password" minlength="8" autocomplete="new-password" required></div>
+    <button class="btn primary" type="submit">Salvar nova senha</button>
+    ${S.recoveryForced?"":`<button class="btn ghost sm" type="button" data-act="cancelpass">Cancelar</button>`}
   </form>`;
 }
 function render(){
-  if(S.authReady && !S.session){ $("#view").innerHTML=vLogin(); $("#nav").hidden=true; $("#signout").hidden=true; return; }
-  $("#nav").hidden=false; $("#signout").hidden=!S.session;
+  if(S.authReady && S.session && S.recovery){ $("#view").innerHTML=vNewPass(); $("#nav").hidden=true; $("#signout").hidden=true; $("#chpass").hidden=true; return; }
+  if(S.authReady && !S.session){ $("#view").innerHTML=vLogin(); $("#nav").hidden=true; $("#signout").hidden=true; $("#chpass").hidden=true; return; }
+  $("#nav").hidden=false; $("#signout").hidden=!S.session; $("#chpass").hidden=!S.session;
   const v=S.view; document.querySelectorAll("nav a").forEach(a=>a.toggleAttribute("aria-current",false)||a.setAttribute("aria-current",a.dataset.v===v?"page":"false"));
   const html = v==="parametros"?vParametros(): v==="corais"?vCorais(): v==="vitrine"?vVitrine(): vPainel();
   const view=$("#view"); const hadQ=document.activeElement&&document.activeElement.id==="q"; const pos=hadQ?document.activeElement.selectionStart:0;
@@ -637,7 +659,9 @@ document.addEventListener("error", e=>{ const im=e.target; if(im&&im.tagName==="
 const A = {
   async signout(){ await S.sb.auth.signOut(); },
   exportar(){ const blob=new Blob([JSON.stringify({exportedAt:new Date().toISOString(),tests:S.tests,corals:S.corals},null,2)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="mudario-backup-"+today()+".json"; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},1000); },
-  authmode(){ S.signup=!S.signup; render(); },
+  authmode(el){ S.authMode=el.dataset.m||"login"; render(); },
+  changepass(){ S.recovery=true; S.recoveryForced=false; render(); },
+  cancelpass(){ S.recovery=false; render(); },
   light(el){ S.light=el.dataset.l; S.galleryPick=null; if(S.modalKind==="coral") renderModal(); render(); },
   group(el){ S.group=el.dataset.g; render(); },
   open(el){ openCoral(el.dataset.id); },
@@ -675,10 +699,23 @@ document.addEventListener("change", e=>{
 });
 document.addEventListener("submit", async e=>{
   e.preventDefault(); const fm=e.target; const fd=new FormData(fm);
+  if(fm.id==="forgotform"){
+    const email=String(fd.get("email")).trim();
+    const {error}=await S.sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
+    if(error) toast(error.message,true); else { S.authMode="login"; render(); setBanner("Se o e-mail estiver cadastrado, o link para redefinir a senha chega em instantes. Confira também o spam."); }
+    return;
+  }
+  if(fm.id==="newpassform"){
+    const a=String(fd.get("password")), b=String(fd.get("password2"));
+    if(a!==b){ toast("As senhas não conferem.",true); return; }
+    const {error}=await S.sb.auth.updateUser({password:a});
+    if(error){ toast(error.message,true); return; }
+    S.recovery=false; S.recoveryForced=false; setBanner(""); toast("Senha alterada"); render(); return;
+  }
   if(fm.id==="loginform"){
     const email=String(fd.get("email")).trim(), password=String(fd.get("password"));
-    if(S.signup){ const {error}=await S.sb.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}});
-      if(error) toast(error.message,true); else { S.signup=false; render(); setBanner("Conta criada. Abra o link de confirmação no seu e-mail e depois entre aqui."); } }
+    if(S.authMode==="signup"){ const {error}=await S.sb.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}});
+      if(error) toast(error.message,true); else { S.authMode="login"; render(); setBanner("Conta criada. Abra o link de confirmação no seu e-mail e depois entre aqui."); } }
     else { const {error}=await S.sb.auth.signInWithPassword({email,password}); if(error) toast(error.message==="Invalid login credentials"?"E-mail ou senha incorretos (ou e-mail ainda não confirmado).":error.message,true); }
     return;
   }
@@ -721,6 +758,7 @@ function makeDB(sb){
 }
 (async ()=>{
   if(!window.supabase){ setBanner("Não foi possível carregar o app. Verifique a conexão e recarregue."); return; }
+  if(/type=recovery/.test(location.hash+location.search)){ S.recovery=true; S.recoveryForced=true; }
   const sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
   S.sb=sb; S.db=makeDB(sb);
   let subscribed=false;
@@ -744,6 +782,7 @@ function makeDB(sb){
   S.session=session; S.authReady=true; setBanner("");
   if(session) start(); render();
   sb.auth.onAuthStateChange((ev,sess)=>{ const had=!!S.session; S.session=sess;
+    if(ev==="PASSWORD_RECOVERY"){ S.recovery=true; S.recoveryForced=true; }
     if(sess && !had){ setBanner(""); start(); }
     if(!sess && had){ S.tests=[]; S.corals=[]; S.modalKind=null; S.draft=null; renderModal(); }
     render(); });
