@@ -254,6 +254,10 @@ tr:last-child td{border-bottom:0}
 "use strict";
 const SB_URL="https://dkypcjxvtvgsbdovlkpk.supabase.co";
 const SB_KEY="sb_publishable_8I4n91ShSDsf6HRzq2R1Gg_D599BYlW";
+const APP_VERSION="v6";
+function fail(msg){ const b=document.getElementById("banner"); if(b) b.textContent=(msg+" ["+APP_VERSION+"]"); const r=document.getElementById("retry"); if(r) r.hidden=false; }
+window.addEventListener("error",e=>{ if(e.target&&e.target.tagName) return; fail("Erro no app: "+(e.message||"desconhecido")); });
+window.addEventListener("unhandledrejection",e=>{ const m=(e.reason&&e.reason.message)||String(e.reason||""); if(/Failed to fetch|NetworkError|Load failed/i.test(m)) fail("Sem conexão com o banco de dados. Verifique a internet."); else fail("Erro no app: "+m); });
 const START = "2026-10-17"; // início da ciclagem
 const PARAMS = [
   {k:"temp", l:"Temperatura", u:"°C",  d:1, ok:[25,26],       w:[24.5,26.5], alvo:"25–26 °C"},
@@ -796,15 +800,12 @@ document.addEventListener("submit", async e=>{
 });
 
 /* ---------- routing ---------- */
-function route(){ const h=location.hash.replace("#",""); S.view=["painel","parametros","corais","vitrine","conta"].includes(h)?h:"painel"; render(); }
+function safeRender(){ try{ render(); }catch(e){ fail("Erro ao desenhar a tela: "+(e&&e.message||e)); } }
+function route(){ const h=location.hash.replace("#",""); S.view=["painel","parametros","corais","vitrine","conta"].includes(h)?h:"painel"; safeRender(); }
 window.addEventListener("hashchange", route);
 route();
 
 /* ---------- data (Supabase) ---------- */
-const APP_VERSION="v5";
-function fail(msg){ setBanner(msg+" ["+APP_VERSION+"]"); const r=$("#retry"); if(r) r.hidden=false; }
-window.addEventListener("error",e=>{ if(e.target&&e.target.tagName) return; fail("Erro no app: "+(e.message||"desconhecido")); });
-window.addEventListener("unhandledrejection",e=>{ const m=(e.reason&&e.reason.message)||String(e.reason||""); if(/Failed to fetch|NetworkError|Load failed/i.test(m)) fail("Sem conexão com o banco de dados. Verifique a internet."); else fail("Erro no app: "+m); });
 function makeDB(sb){
   const L={tests:[],corals:[]}, C={tests:new Map(),corals:new Map()};
   const emit=col=>{ const docs=[...C[col].entries()].map(([id,d])=>({id,exists:true,data:()=>d})); L[col].forEach(f=>f({docs,metadata:{fromCache:false}})); };
