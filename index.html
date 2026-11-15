@@ -196,6 +196,7 @@ tr:last-child td{border-bottom:0}
 .field{display:grid;gap:4px}
 .field.wide{grid-column:1/-1}
 .field label{font-size:12px;color:var(--muted);font-weight:500}
+.field input[type=date]{-webkit-appearance:none;appearance:none;min-width:0;display:block;min-height:38px}
 .field input,.field select,.field textarea{padding:8px 10px;border-radius:9px;border:1px solid var(--line);background:var(--surface);width:100%;min-width:0}
 .field textarea{min-height:70px;resize:vertical}
 .field .hint{font-size:11px;color:var(--muted)}
@@ -304,7 +305,7 @@ tr:last-child td{border-bottom:0}
 "use strict";
 const SB_URL="https://dkypcjxvtvgsbdovlkpk.supabase.co";
 const SB_KEY="sb_publishable_8I4n91ShSDsf6HRzq2R1Gg_D599BYlW";
-const APP_VERSION="v12";
+const APP_VERSION="v13";
 function fail(msg){ const b=document.getElementById("banner"); if(b) b.textContent=(msg+" ["+APP_VERSION+"]"); const r=document.getElementById("retry"); if(r) r.hidden=false; }
 window.addEventListener("error",e=>{ if(e.target&&e.target.tagName) return; fail("Erro no app: "+(e.message||"desconhecido")); });
 window.addEventListener("unhandledrejection",e=>{ const m=(e.reason&&e.reason.message)||String(e.reason||""); if(/Failed to fetch|NetworkError|Load failed/i.test(m)) fail("Sem conexão com o banco de dados. Verifique a internet."); else fail("Erro no app: "+m); });
@@ -613,7 +614,7 @@ function render(){
 }
 
 /* ---------- coral modal ---------- */
-function openCoral(id){ const c=S.corals.find(x=>x.id===id); if(!c) return; S.draft=clone(c); S.dirty=false; S.confirmClose=false; S.newUploads=[]; S.webOpen=false; S.webBlob=null; S.spOther=false; S.galleryPick=null; S.modalKind="coral"; renderModal(); }
+function openCoral(id){ const c=S.corals.find(x=>x.id===id); if(!c) return; S.draft=clone(c); S.isNew=false; S.dirty=false; S.confirmClose=false; S.newUploads=[]; S.webOpen=false; S.webBlob=null; S.spOther=false; S.galleryPick=null; S.modalKind="coral"; renderModal(); }
 function gallerySorted(c){ return (c.gallery||[]).slice().sort((a,b)=>a.d<b.d?1:-1); }
 function growthSVG(h){
   if(!h||h.length<2) return `<div class="nodata">O gráfico de crescimento aparece a partir da segunda contagem de pólipos.</div>`;
@@ -650,7 +651,7 @@ function modalCoral(){
       </div>
     </div>`).join("");
   return `<div class="overlay" data-act="bgclose"><div class="modal" role="dialog" aria-modal="true" aria-label="${esc(c.name)}">
-    <div class="mhead"><div><h2>${esc(c.name)}</h2><span class="small muted num">${t.frags} muda${t.frags===1?"":"s"} ativas · ${t.polyps} pólipos${t.avail?` · ${t.avail} à venda`:""}</span></div>
+    <div class="mhead"><div><h2>${esc(c.name||(S.isNew?"Novo coral":"Sem nome"))}</h2><span class="small muted num">${S.isNew?"Ainda não adicionado · ":""}${t.frags} muda${t.frags===1?" ativa":"s ativas"} · ${t.polyps} pólipo${t.polyps===1?"":"s"}${t.avail?` · ${t.avail} à venda`:""}</span></div>
       <button class="btn" data-act="close">Fechar</button></div>
     <div class="mbody">
       <div class="cols">
@@ -675,7 +676,6 @@ function modalCoral(){
             <div class="field"><label for="cf-origin">Origem</label><input id="cf-origin" data-cf="origin" value="${esc(c.origin||"")}" placeholder="Display, loja, leilão…"></div>
             <div class="field"><label for="cf-added">Entrada no mudário</label><input id="cf-added" type="date" data-cf="addedAt" value="${esc(c.addedAt||"")}"></div>
             <div class="field"><label for="cf-dip">Último dip</label><input id="cf-dip" type="date" data-cf="dippedAt" value="${esc(c.dippedAt||"")}"></div>
-            <div class="field" style="align-self:end"><label class="check"><input type="checkbox" data-cf="check" ${c.check?"checked":""}> Check</label></div>
             <div class="field wide"><label for="cf-notes">Notas</label><textarea id="cf-notes" data-cf="notes" placeholder="Comportamento, PAR, pragas observadas, vizinhos…">${esc(c.notes||"")}</textarea></div>
           </div>
           <div class="sec">
@@ -683,7 +683,7 @@ function modalCoral(){
             <div class="frags">${frags||`<div class="card empty-state small">Nenhuma muda.</div>`}</div>
           </div>
           <div class="sec"><h3>Crescimento (pólipos nas mudas ativas)</h3><div class="card" style="padding:10px 12px">${growthSVG(c.history)}</div></div>
-          <div class="toolbar edit"><button class="btn sm ghost danger" data-act="delcoral">${S.confirm.coral?"Toque de novo para apagar este coral":"Apagar coral"}</button></div>
+          ${S.isNew?"":`<div class="toolbar edit"><button class="btn sm ghost danger" data-act="delcoral">${S.confirm.coral?"Toque de novo para apagar este coral":"Apagar coral"}</button></div>`}
         </div>
       </div>
     </div>${saveBar()}</div></div>`;
@@ -739,8 +739,10 @@ function renderModal(){
   m.innerHTML = S.modalKind==="coral"?modalCoral(): S.modalKind==="test"?modalTest(): modalNewCoral();
   document.body.style.overflow="hidden"; const nov=m.querySelector(".overlay"); if(nov) nov.scrollTop=sc;
 }
-function closeModal(){ if(S.modalKind==="coral" && S.dirty){ S.confirmClose=true; renderModal(); return; } closeModalNow(); }
-function closeModalNow(){ if(S.modalKind==="newcoral"&&S.nc&&S.nc.uploads.length&&S.sb){ S.sb.storage.from("photos").remove(S.nc.uploads).catch(()=>{}); S.nc.uploads=[]; } S.modalKind=null; S.draft=null; S.editTest=null; S.confirm={}; S.dirty=false; S.confirmClose=false; S.newUploads=[]; renderModal(); }
+function closeModal(){
+  if(S.modalKind==="coral" && S.isNew && !String(S.draft.name||"").trim() && !(S.newUploads||[]).length){ S.dirty=false; closeModalNow(); return; }
+  if(S.modalKind==="coral" && S.dirty){ S.confirmClose=true; renderModal(); return; } closeModalNow(); }
+function closeModalNow(){ if(S.isNew&&S.newUploads&&S.newUploads.length&&S.sb){ S.sb.storage.from("photos").remove(S.newUploads).catch(()=>{}); } S.isNew=false; if(S.modalKind==="newcoral"&&S.nc&&S.nc.uploads.length&&S.sb){ S.sb.storage.from("photos").remove(S.nc.uploads).catch(()=>{}); S.nc.uploads=[]; } S.modalKind=null; S.draft=null; S.editTest=null; S.confirm={}; S.dirty=false; S.confirmClose=false; S.newUploads=[]; renderModal(); }
 
 /* ---------- saving ---------- */
 const saveT={}, pending={}, chains={};
@@ -748,10 +750,13 @@ function snapHistory(c){ const t=totals(c), d=today(); c.history=c.history||[]; 
 function snapFrag(f){ const d=today(); f.history=f.history||[]; const h=f.history; if(h.length&&h[h.length-1].d===d) h[h.length-1]={d,polyps:+f.polyps||0}; else h.push({d,polyps:+f.polyps||0}); }
 function saveCoral(){ if(!S.draft) return; S.dirty=true; S.confirmClose=false; updateSaveBar(); }
 function saveBar(){
+  if(S.isNew&&!S.confirmClose) return `<div class="mfoot dirty edit" id="savebar"><span class="st">${S.saving?"Adicionando…":"Novo coral, ainda não adicionado"}</span>
+    <button class="btn ghost" data-act="discard" data-close="1" ${S.saving?"disabled":""}>Cancelar</button>
+    <button class="btn primary" data-act="savecoral" ${S.saving?"disabled":""}>Adicionar coral</button></div>`;
   if(S.confirmClose) return `<div class="mfoot ask" id="savebar"><span class="st">Você tem alterações não salvas.</span>
     <button class="btn ghost" data-act="keepediting">Continuar editando</button>
-    <button class="btn ghost danger" data-act="discard" data-close="1">Descartar e fechar</button>
-    <button class="btn primary" data-act="savecoral" data-close="1" ${S.saving?"disabled":""}>Salvar e fechar</button></div>`;
+    <button class="btn ghost danger" data-act="discard" data-close="1">${S.isNew?"Descartar coral":"Descartar e fechar"}</button>
+    <button class="btn primary" data-act="savecoral" data-close="1" ${S.saving?"disabled":""}>${S.isNew?"Adicionar e fechar":"Salvar e fechar"}</button></div>`;
   return `<div class="mfoot ${S.dirty?"dirty":""} edit" id="savebar"><span class="st">${S.saving?"Salvando…":S.dirty?"Alterações não salvas":"Tudo salvo"}</span>
     <button class="btn ghost" data-act="discard" ${S.dirty&&!S.saving?"":"disabled"}>Descartar</button>
     <button class="btn primary" data-act="savecoral" ${S.dirty&&!S.saving?"":"disabled"}>Salvar alterações</button></div>`;
@@ -759,15 +764,18 @@ function saveBar(){
 function updateSaveBar(){ const b=$("#savebar"); if(b) b.outerHTML=saveBar(); }
 async function saveCoralNow(){
   if(!S.draft||!S.dirty||S.saving) return;
+  if(!String(S.draft.name||"").trim()){ S.confirmClose=false; renderModal(); toast("Informe o nome do coral.",true); setTimeout(()=>{ const n=$("#cf-name"); if(n) n.focus(); },60); return; }
   const id=S.draft.id; const c=clone(S.draft); delete c.id; c.updatedAt=new Date().toISOString();
   S.saving=true; updateSaveBar();
-  try{ await S.db.doc("corals/"+id).set(c); S.dirty=false; S.confirmClose=false; S.newUploads=[]; toast("Alterações salvas"); }
+  const wasNew=S.isNew;
+  try{ await S.db.doc("corals/"+id).set(c); S.dirty=false; S.confirmClose=false; S.newUploads=[]; S.isNew=false; toast(wasNew?"Coral adicionado":"Alterações salvas"); }
   catch(e){ toast(errMsg(e),true); }
   finally{ S.saving=false; if(S.modalKind==="coral") renderModal(); }
 }
 async function discardCoral(){
   const up=(S.newUploads||[]).slice(); S.newUploads=[];
   if(up.length&&S.sb){ try{ await S.sb.storage.from("photos").remove(up); }catch(_){} }
+  if(S.isNew){ S.dirty=false; S.confirmClose=false; return; }
   const fresh=S.draft&&S.corals.find(c=>c.id===S.draft.id); if(fresh) S.draft=clone(fresh);
   S.dirty=false; S.confirmClose=false; S.galleryPick=null;
 }
@@ -929,7 +937,10 @@ const A = {
   newtest(){ S.editTest=null; S.modalKind="test"; renderModal(); },
   edittest(el){ const t=S.tests.find(x=>x.id===el.dataset.id); if(!t) return; S.editTest=clone(t); S.modalKind="test"; renderModal(); },
   async deltest(){ if(!armConfirm("test")){ renderModal(); return; } const id=S.editTest.id; try{ await S.db.doc("tests/"+id).delete(); toast("Teste apagado"); closeModal(); }catch(e){ toast(errMsg(e),true); } },
-  newcoral(){ S.nc={name:"",group:"zoa",species:"",spOther:false,polyps:1,origin:"",dippedAt:today(),cover:{},gallery:[],uploads:[]}; S.webOpen=false; S.webBlob=null; S.modalKind="newcoral"; renderModal(); setTimeout(()=>{const n=$("#n-name"); n&&n.focus();},30); },
+  newcoral(){ const f={id:rid("f"),label:"Muda 1",polyps:1,status:"matriz",photos:{},history:[]}; snapFrag(f);
+    const c={id:rid("c"),name:"",group:"zoa",species:"",origin:"",addedAt:today(),dippedAt:today(),zone:"",notes:"",cover:{},gallery:[],frags:[f],history:[]}; snapHistory(c);
+    S.draft=c; S.isNew=true; S.dirty=true; S.confirmClose=false; S.newUploads=[]; S.webOpen=false; S.webBlob=null; S.spOther=false; S.galleryPick=null; S.modalKind="coral"; renderModal();
+    setTimeout(()=>{ const n=$("#cf-name"); if(n) n.focus(); },60); },
   gpick(el){ S.galleryPick = S.galleryPick===el.dataset.id?null:el.dataset.id; renderModal(); },
   pol(el){ const f=fragById(el.dataset.frag); if(!f) return; f.polyps=Math.max(0,(+f.polyps||0)+(+el.dataset.d)); snapFrag(f); snapHistory(S.draft); renderModal(); saveCoral(900); },
   addfrag(){ const c=S.draft; c.frags=c.frags||[]; const f={id:rid("f"),label:"Muda "+(c.frags.length+1),polyps:1,status:"crescendo",photos:{},history:[]}; snapFrag(f); c.frags.push(f); snapHistory(c); renderModal(); saveCoral(300); },
@@ -1046,7 +1057,7 @@ function makeDB(sb){
       S.corals=s.docs.map(d=>normCoral(Object.assign({id:d.id},d.data()))); gc=true; done();
       if(gc&&S.session&&!S.corals.length&&!S.tests.length) setBanner("Nenhum dado visível para esta conta. Entre com o e-mail dono do mudário.");
       render();
-      if(S.modalKind==="coral" && S.draft && !S.dirty && !S.saving){
+      if(S.modalKind==="coral" && S.draft && !S.dirty && !S.saving && !S.isNew){
         const fresh=S.corals.find(c=>c.id===S.draft.id);
         if(!fresh){ S.modalKind=null; S.draft=null; renderModal(); }
         else { const a=clone(fresh), b=clone(S.draft); delete a.updatedAt; delete b.updatedAt; if(JSON.stringify(a)!==JSON.stringify(b) && !document.activeElement.matches("input,textarea")){ S.draft=clone(fresh); renderModal(); } }
