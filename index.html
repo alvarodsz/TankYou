@@ -9,6 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Tank You">
 <link rel="manifest" href="manifest.webmanifest">
+<script>try{var t=localStorage.getItem("ty-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
@@ -67,6 +68,7 @@ header{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px s
 nav{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
 nav a{padding:9px 14px;border-radius:10px 10px 0 0;text-decoration:none;color:var(--muted);font-weight:500;white-space:nowrap;border-bottom:2px solid transparent}
 nav a[aria-current="page"]{color:var(--ink);border-bottom-color:var(--accent)}
+@media (max-width:480px){nav{gap:0;justify-content:space-between}nav a{padding:9px 8px;font-size:14px}}
 main{max-width:1180px;margin:0 auto;padding:18px max(16px,env(safe-area-inset-right)) calc(80px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));display:grid;gap:22px}
 .banner{padding:10px 14px;border-radius:10px;background:var(--warn-bg);color:var(--ink);font-size:14px}
 .banner:empty{display:none}
@@ -158,6 +160,7 @@ tr:last-child td{border-bottom:0}
 .mbody{padding:18px;display:grid;gap:20px}
 .cols{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:20px;align-items:start}
 @media (max-width:760px){
+  .mfoot{border-radius:0}
   .cols{grid-template-columns:1fr}
   .overlay{padding:0}
   .modal{border-radius:0;min-height:100%}
@@ -202,6 +205,13 @@ tr:last-child td{border-bottom:0}
 .vit-head{padding:18px;display:grid;gap:6px}
 .price{font-family:var(--mono);font-weight:500}
 .ro .edit{display:none !important}
+.mfoot{position:sticky;bottom:0;z-index:2;background:var(--bg);border-top:1px solid var(--line);padding:12px 18px calc(12px + env(safe-area-inset-bottom));display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap;border-radius:0 0 16px 16px}
+.mfoot .st{margin-right:auto;font-size:13px;color:var(--muted)}
+.mfoot.dirty .st{color:var(--warn);font-weight:500}
+.mfoot.ask{background:var(--warn-bg)}
+.acct{display:grid;gap:12px;max-width:620px}
+.acct .card{padding:16px 18px;display:grid;gap:10px}
+.acct .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .login{max-width:420px;margin:40px auto;padding:22px;display:grid;gap:14px}
 .brand .out{margin-left:auto}
 .ph img.broken{display:none}
@@ -219,14 +229,14 @@ tr:last-child td{border-bottom:0}
     <div class="brand">
       <h1><img src="icons/mark.svg" alt="">Tank You</h1>
       <span class="sub" id="sub">Mudário · 70 × 36 × 25 cm · AIO · ~50 L · softs e LPS</span>
-      <button class="btn sm ghost out" id="chpass" data-act="changepass" hidden>Trocar senha</button>
-      <button class="btn sm ghost" id="signout" data-act="signout" hidden>Sair</button>
+
     </div>
     <nav id="nav">
       <a href="#painel" data-v="painel">Painel</a>
       <a href="#parametros" data-v="parametros">Parâmetros</a>
       <a href="#corais" data-v="corais">Corais</a>
       <a href="#vitrine" data-v="vitrine">Vitrine</a>
+      <a href="#conta" data-v="conta">Conta</a>
     </nav>
   </div>
 </header>
@@ -335,8 +345,7 @@ function vPainel(){
       <div class="card tile"><span class="lab">Disponíveis p/ venda</span><span class="val num">${av}</span></div>
     </div>
   </section>
-  ${notes?`<section class="sec"><h2>Notas recentes</h2><div class="notes">${notes}</div></section>`:""}
-  <section class="sec"><div class="toolbar"><button class="btn ghost sm" data-act="exportar">Exportar backup (JSON)</button><span class="small muted">Guarde uma cópia de vez em quando: o plano gratuito do Supabase não faz backup.</span></div></section>`;
+  ${notes?`<section class="sec"><h2>Notas recentes</h2><div class="notes">${notes}</div></section>`:""}`;
 }
 
 function chartSVG(p, pts){
@@ -421,6 +430,26 @@ function vVitrine(){
   </section>`;
 }
 
+function themePref(){ try{ return localStorage.getItem("ty-theme")||"system"; }catch(e){ return "system"; } }
+function applyTheme(t){ const r=document.documentElement; if(t==="light"||t==="dark") r.setAttribute("data-theme",t); else r.removeAttribute("data-theme"); try{ if(t==="system") localStorage.removeItem("ty-theme"); else localStorage.setItem("ty-theme",t); }catch(e){} }
+function vConta(){
+  const email=(S.session&&S.session.user&&S.session.user.email)||"";
+  const th=themePref();
+  const opt=(k,l)=>`<button data-act="theme" data-t="${k}" aria-pressed="${th===k}">${l}</button>`;
+  return `<section class="sec acct">
+    <h2>Minha conta</h2>
+    <div class="card"><h3>Conectado como</h3><span class="num small">${esc(email)}</span></div>
+    <div class="card"><h3>Aparência</h3>
+      <div class="seg" role="group" aria-label="Modo de exibição">${opt("system","Sistema")}${opt("light","Claro")}${opt("dark","Escuro")}</div>
+      <span class="small muted">"Sistema" segue o modo claro ou escuro do celular.</span></div>
+    <div class="card"><h3>Senha</h3>
+      <div class="row"><button class="btn" data-act="changepass">Alterar senha</button><button class="btn ghost" data-act="sendreset">Enviar link de redefinição por e-mail</button></div></div>
+    <div class="card"><h3>Backup</h3>
+      <div class="row"><button class="btn" data-act="exportar">Exportar backup (JSON)</button></div>
+      <span class="small muted">O plano gratuito do Supabase não faz backup. Guarde uma cópia de vez em quando.</span></div>
+    <div class="card"><div class="row"><button class="btn danger" data-act="signout">Sair do aplicativo</button><span class="small muted" style="margin-left:auto">Tank You ${APP_VERSION}</span></div></div>
+  </section>`;
+}
 function vLogin(){
   const m=S.authMode||"login";
   if(m==="forgot") return `<form class="card login" id="forgotform">
@@ -453,18 +482,18 @@ function vNewPass(){
   </form>`;
 }
 function render(){
-  if(S.authReady && S.session && S.recovery){ $("#view").innerHTML=vNewPass(); $("#nav").hidden=true; $("#signout").hidden=true; $("#chpass").hidden=true; return; }
-  if(S.authReady && !S.session){ $("#view").innerHTML=vLogin(); $("#nav").hidden=true; $("#signout").hidden=true; $("#chpass").hidden=true; return; }
-  $("#nav").hidden=false; $("#signout").hidden=!S.session; $("#chpass").hidden=!S.session;
+  if(S.authReady && S.session && S.recovery){ $("#view").innerHTML=vNewPass(); $("#nav").hidden=true; return; }
+  if(S.authReady && !S.session){ $("#view").innerHTML=vLogin(); $("#nav").hidden=true; return; }
+  $("#nav").hidden=false;
   const v=S.view; document.querySelectorAll("nav a").forEach(a=>a.toggleAttribute("aria-current",false)||a.setAttribute("aria-current",a.dataset.v===v?"page":"false"));
-  const html = v==="parametros"?vParametros(): v==="corais"?vCorais(): v==="vitrine"?vVitrine(): vPainel();
+  const html = v==="parametros"?vParametros(): v==="corais"?vCorais(): v==="vitrine"?vVitrine(): v==="conta"?vConta(): vPainel();
   const view=$("#view"); const hadQ=document.activeElement&&document.activeElement.id==="q"; const pos=hadQ?document.activeElement.selectionStart:0;
   view.innerHTML=html;
   if(hadQ){ const q=$("#q"); if(q){ q.focus(); try{q.setSelectionRange(pos,pos);}catch(e){} } }
 }
 
 /* ---------- coral modal ---------- */
-function openCoral(id){ const c=S.corals.find(x=>x.id===id); if(!c) return; S.draft=clone(c); S.galleryPick=null; S.modalKind="coral"; renderModal(); }
+function openCoral(id){ const c=S.corals.find(x=>x.id===id); if(!c) return; S.draft=clone(c); S.dirty=false; S.confirmClose=false; S.newUploads=[]; S.galleryPick=null; S.modalKind="coral"; renderModal(); }
 function gallerySorted(c){ return (c.gallery||[]).slice().sort((a,b)=>a.d<b.d?1:-1); }
 function growthSVG(h){
   if(!h||h.length<2) return `<div class="nodata">O gráfico de crescimento aparece a partir da segunda contagem de pólipos.</div>`;
@@ -534,7 +563,7 @@ function modalCoral(){
           <div class="toolbar edit"><button class="btn sm ghost danger" data-act="delcoral">${S.confirm.coral?"Toque de novo para apagar este coral":"Apagar coral"}</button></div>
         </div>
       </div>
-    </div></div></div>`;
+    </div>${saveBar()}</div></div>`;
 }
 function modalTest(){
   const t=S.editTest||{date:today(),time:"",qual:{}}; const isNew=!t.id;
@@ -574,18 +603,37 @@ function renderModal(){
   m.innerHTML = S.modalKind==="coral"?modalCoral(): S.modalKind==="test"?modalTest(): modalNewCoral();
   document.body.style.overflow="hidden"; const nov=m.querySelector(".overlay"); if(nov) nov.scrollTop=sc;
 }
-function closeModal(){ if(S.modalKind==="coral" && S.draft) flushCoral(S.draft.id, true); S.modalKind=null; S.draft=null; S.editTest=null; S.confirm={}; renderModal(); }
+function closeModal(){ if(S.modalKind==="coral" && S.dirty){ S.confirmClose=true; renderModal(); return; } closeModalNow(); }
+function closeModalNow(){ S.modalKind=null; S.draft=null; S.editTest=null; S.confirm={}; S.dirty=false; S.confirmClose=false; S.newUploads=[]; renderModal(); }
 
 /* ---------- saving ---------- */
 const saveT={}, pending={}, chains={};
 function snapHistory(c){ const t=totals(c), d=today(); c.history=c.history||[]; const h=c.history; if(h.length&&h[h.length-1].d===d) h[h.length-1]={d,frags:t.frags,polyps:t.polyps}; else h.push({d,frags:t.frags,polyps:t.polyps}); }
 function snapFrag(f){ const d=today(); f.history=f.history||[]; const h=f.history; if(h.length&&h[h.length-1].d===d) h[h.length-1]={d,polyps:+f.polyps||0}; else h.push({d,polyps:+f.polyps||0}); }
-function saveCoral(delay){ const id=S.draft.id; pending[id]=true; clearTimeout(saveT[id]); saveT[id]=setTimeout(()=>flushCoral(id),delay??700); }
-function flushCoral(id, now){
-  if(!pending[id]) return; clearTimeout(saveT[id]);
-  const c = S.draft && S.draft.id===id ? clone(S.draft) : null; if(!c||!S.db){ pending[id]=false; return; }
-  delete c.id; c.updatedAt=new Date().toISOString();
-  chains[id]=(chains[id]||Promise.resolve()).then(()=>S.db.doc("corals/"+id).set(c)).then(()=>{ pending[id]=false; }).catch(e=>{ pending[id]=false; toast(errMsg(e),true); });
+function saveCoral(){ if(!S.draft) return; S.dirty=true; S.confirmClose=false; updateSaveBar(); }
+function saveBar(){
+  if(S.confirmClose) return `<div class="mfoot ask" id="savebar"><span class="st">Você tem alterações não salvas.</span>
+    <button class="btn ghost" data-act="keepediting">Continuar editando</button>
+    <button class="btn ghost danger" data-act="discard" data-close="1">Descartar e fechar</button>
+    <button class="btn primary" data-act="savecoral" data-close="1" ${S.saving?"disabled":""}>Salvar e fechar</button></div>`;
+  return `<div class="mfoot ${S.dirty?"dirty":""} edit" id="savebar"><span class="st">${S.saving?"Salvando…":S.dirty?"Alterações não salvas":"Tudo salvo"}</span>
+    <button class="btn ghost" data-act="discard" ${S.dirty&&!S.saving?"":"disabled"}>Descartar</button>
+    <button class="btn primary" data-act="savecoral" ${S.dirty&&!S.saving?"":"disabled"}>Salvar alterações</button></div>`;
+}
+function updateSaveBar(){ const b=$("#savebar"); if(b) b.outerHTML=saveBar(); }
+async function saveCoralNow(){
+  if(!S.draft||!S.dirty||S.saving) return;
+  const id=S.draft.id; const c=clone(S.draft); delete c.id; c.updatedAt=new Date().toISOString();
+  S.saving=true; updateSaveBar();
+  try{ await S.db.doc("corals/"+id).set(c); S.dirty=false; S.confirmClose=false; S.newUploads=[]; toast("Alterações salvas"); }
+  catch(e){ toast(errMsg(e),true); }
+  finally{ S.saving=false; if(S.modalKind==="coral") renderModal(); }
+}
+async function discardCoral(){
+  const up=(S.newUploads||[]).slice(); S.newUploads=[];
+  if(up.length&&S.sb){ try{ await S.sb.storage.from("photos").remove(up); }catch(_){} }
+  const fresh=S.draft&&S.corals.find(c=>c.id===S.draft.id); if(fresh) S.draft=clone(fresh);
+  S.dirty=false; S.confirmClose=false; S.galleryPick=null;
 }
 function fragById(fid){ return (S.draft.frags||[]).find(f=>f.id===fid); }
 function armConfirm(key){ if(S.confirm[key]) return true; S.confirm[key]=true; setTimeout(()=>{ if(S.confirm[key]){ S.confirm[key]=false; if(S.modalKind) renderModal(); } },4000); return false; }
@@ -666,6 +714,11 @@ const A = {
   exportar(){ const blob=new Blob([JSON.stringify({exportedAt:new Date().toISOString(),tests:S.tests,corals:S.corals},null,2)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="tankyou-backup-"+today()+".json"; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},1000); },
   authmode(el){ S.authMode=el.dataset.m||"login"; render(); },
   changepass(){ S.recovery=true; S.recoveryForced=false; render(); },
+  theme(el){ applyTheme(el.dataset.t); render(); },
+  async sendreset(){ const email=S.session&&S.session.user&&S.session.user.email; if(!email) return; const {error}=await S.sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname}); if(error) toast(error.message,true); else toast("Link enviado para o seu e-mail"); },
+  async savecoral(el){ await saveCoralNow(); if(!S.dirty && el.dataset.close){ closeModalNow(); } },
+  async discard(el){ await discardCoral(); if(el.dataset.close) closeModalNow(); else renderModal(); },
+  keepediting(){ S.confirmClose=false; renderModal(); },
   cancelpass(){ S.recovery=false; render(); },
   light(el){ S.light=el.dataset.l; S.galleryPick=null; if(S.modalKind==="coral") renderModal(); render(); },
   group(el){ S.group=el.dataset.g; render(); },
@@ -680,10 +733,10 @@ const A = {
   pol(el){ const f=fragById(el.dataset.frag); if(!f) return; f.polyps=Math.max(0,(+f.polyps||0)+(+el.dataset.d)); snapFrag(f); snapHistory(S.draft); renderModal(); saveCoral(900); },
   addfrag(){ const c=S.draft; c.frags=c.frags||[]; const f={id:rid("f"),label:"Muda "+(c.frags.length+1),polyps:1,status:"crescendo",photos:{},history:[]}; snapFrag(f); c.frags.push(f); snapHistory(c); renderModal(); saveCoral(300); },
   delfrag(el){ const k="f"+el.dataset.frag; if(!armConfirm(k)){ renderModal(); return; } S.confirm[k]=false; S.draft.frags=S.draft.frags.filter(f=>f.id!==el.dataset.frag); snapHistory(S.draft); renderModal(); saveCoral(200); },
-  async cover(el){ const l=el.dataset.l; const id=await uploadPhoto(); if(!id||!S.draft) return; const c=S.draft; c.cover=Object.assign({},c.cover,{[l]:id}); c.gallery=c.gallery||[]; c.gallery.push({id,light:l,d:today()}); S.light=l; S.galleryPick=null; renderModal(); saveCoral(0); toast("Foto salva"); },
-  async fragphoto(el){ const l=el.dataset.l, fid=el.dataset.frag; const id=await uploadPhoto(); if(!id||!S.draft) return; const f=fragById(fid); if(!f) return;
-    f.photos=Object.assign({},f.photos,{[l]:id}); f.photoDate=today(); const c=S.draft; c.gallery=c.gallery||[]; c.gallery.push({id,light:l,d:today(),frag:fid}); S.light=l; renderModal(); saveCoral(0); toast("Foto da muda salva"); },
-  async delcoral(){ if(!armConfirm("coral")){ renderModal(); return; } const id=S.draft.id; pending[id]=false; clearTimeout(saveT[id]);
+  async cover(el){ const l=el.dataset.l; const id=await uploadPhoto(); if(!id||!S.draft) return; (S.newUploads=S.newUploads||[]).push(id); const c=S.draft; c.cover=Object.assign({},c.cover,{[l]:id}); c.gallery=c.gallery||[]; c.gallery.push({id,light:l,d:today()}); S.light=l; S.galleryPick=null; renderModal(); saveCoral(0); toast("Foto adicionada. Toque em Salvar alterações."); },
+  async fragphoto(el){ const l=el.dataset.l, fid=el.dataset.frag; const id=await uploadPhoto(); if(!id||!S.draft) return; (S.newUploads=S.newUploads||[]).push(id); const f=fragById(fid); if(!f) return;
+    f.photos=Object.assign({},f.photos,{[l]:id}); f.photoDate=today(); const c=S.draft; c.gallery=c.gallery||[]; c.gallery.push({id,light:l,d:today(),frag:fid}); S.light=l; renderModal(); saveCoral(0); toast("Foto adicionada. Toque em Salvar alterações."); },
+  async delcoral(){ if(!armConfirm("coral")){ renderModal(); return; } const id=S.draft.id; S.dirty=false;
     try{ await S.db.doc("corals/"+id).delete(); toast("Coral apagado"); S.modalKind=null; S.draft=null; S.confirm={}; renderModal(); }catch(e){ toast(errMsg(e),true); } },
 };
 document.addEventListener("click", e=>{ const el=e.target.closest("[data-act]"); if(!el) return; const f=A[el.dataset.act]; if(!f) return; if(el.dataset.act!=="bgclose") e.preventDefault(); f(el,e); });
@@ -743,12 +796,12 @@ document.addEventListener("submit", async e=>{
 });
 
 /* ---------- routing ---------- */
-function route(){ const h=location.hash.replace("#",""); S.view=["painel","parametros","corais","vitrine"].includes(h)?h:"painel"; render(); }
+function route(){ const h=location.hash.replace("#",""); S.view=["painel","parametros","corais","vitrine","conta"].includes(h)?h:"painel"; render(); }
 window.addEventListener("hashchange", route);
 route();
 
 /* ---------- data (Supabase) ---------- */
-const APP_VERSION="v4";
+const APP_VERSION="v5";
 function fail(msg){ setBanner(msg+" ["+APP_VERSION+"]"); const r=$("#retry"); if(r) r.hidden=false; }
 window.addEventListener("error",e=>{ if(e.target&&e.target.tagName) return; fail("Erro no app: "+(e.message||"desconhecido")); });
 window.addEventListener("unhandledrejection",e=>{ const m=(e.reason&&e.reason.message)||String(e.reason||""); if(/Failed to fetch|NetworkError|Load failed/i.test(m)) fail("Sem conexão com o banco de dados. Verifique a internet."); else fail("Erro no app: "+m); });
@@ -783,7 +836,7 @@ function makeDB(sb){
       S.corals=s.docs.map(d=>Object.assign({id:d.id},d.data())); gc=true; done();
       if(gc&&S.session&&!S.corals.length&&!S.tests.length) setBanner("Nenhum dado visível para esta conta. Entre com o e-mail dono do mudário.");
       render();
-      if(S.modalKind==="coral" && S.draft && !pending[S.draft.id]){
+      if(S.modalKind==="coral" && S.draft && !S.dirty && !S.saving){
         const fresh=S.corals.find(c=>c.id===S.draft.id);
         if(!fresh){ S.modalKind=null; S.draft=null; renderModal(); }
         else { const a=clone(fresh), b=clone(S.draft); delete a.updatedAt; delete b.updatedAt; if(JSON.stringify(a)!==JSON.stringify(b) && !document.activeElement.matches("input,textarea")){ S.draft=clone(fresh); renderModal(); } }
