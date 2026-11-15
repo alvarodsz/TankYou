@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#0b1424">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -48,6 +48,8 @@
 *{box-sizing:border-box}
 [hidden]{display:none !important}
 html,body{margin:0}
+html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+@media (max-width:760px){input,select,textarea{font-size:16px !important}}
 body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--body);-webkit-font-smoothing:antialiased}
 button,input,select,textarea{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -161,12 +163,13 @@ tr:last-child td{border-bottom:0}
 .ph .tag{position:absolute;left:8px;bottom:8px;background:rgba(5,10,20,.68);color:#fff;font-size:11px;padding:2px 8px;border-radius:999px}
 .ph .tagr{left:auto;right:8px;top:8px;bottom:auto}
 .ph.empty{display:grid;place-items:center;color:rgba(255,255,255,.92);font-family:var(--display);font-size:30px;font-weight:700}
-.g-Zoanthus{background:linear-gradient(140deg,#1f3a8f,#6a2fb8 60%,#e0743a)}
-.g-Palythoa{background:linear-gradient(140deg,#2c2a6e,#7a3d9c 60%,#c5578f)}
-.g-Mushroom{background:linear-gradient(140deg,#13406b,#1c7a8c 55%,#d6a43c)}
-.g-Ricordea{background:linear-gradient(140deg,#0f4a52,#2a9a6b 55%,#f0b13e)}
-.g-Soft{background:linear-gradient(140deg,#3a3f52,#6c7a5a 60%,#c7b37a)}
-.g-LPS{background:linear-gradient(140deg,#14305e,#2d7e6f 55%,#9fd65a)}
+.g-zoa,.g-outros{background:linear-gradient(140deg,#1f3a8f,#6a2fb8 60%,#e0743a)}
+.g-gorg{background:linear-gradient(140deg,#2c2a6e,#7a3d9c 60%,#c5578f)}
+.g-mush{background:linear-gradient(140deg,#13406b,#1c7a8c 55%,#d6a43c)}
+.g-nps{background:linear-gradient(140deg,#0f4a52,#2a9a6b 55%,#f0b13e)}
+.g-soft{background:linear-gradient(140deg,#3a3f52,#6c7a5a 60%,#c7b37a)}
+.g-lps{background:linear-gradient(140deg,#14305e,#2d7e6f 55%,#9fd65a)}
+.g-sps{background:linear-gradient(140deg,#123a5a,#3b7fb8 55%,#f2c14e)}
 
 /* modal */
 .overlay{position:fixed;inset:0;background:rgba(3,8,16,.55);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:28px 16px;overflow-y:auto}
@@ -232,6 +235,10 @@ tr:last-child td{border-bottom:0}
 .fpanel select{padding:8px 10px;border-radius:9px;border:1px solid var(--line);background:var(--surface);width:100%}
 .flabel{font-size:12px;color:var(--muted);font-weight:500}
 .webp{padding:12px 14px;display:grid;gap:10px}
+.ncphotos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.ncph{display:grid;gap:6px;justify-items:start}
+.ncph .ph{border-radius:12px}
+.ncph .ph.empty{color:rgba(255,255,255,.85);font-family:var(--body)}
 .webp .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .webp .steps{margin:0;padding-left:18px;display:grid;gap:2px}
 .webp a.btn{text-decoration:none;justify-content:flex-start;text-align:left}
@@ -297,7 +304,7 @@ tr:last-child td{border-bottom:0}
 "use strict";
 const SB_URL="https://dkypcjxvtvgsbdovlkpk.supabase.co";
 const SB_KEY="sb_publishable_8I4n91ShSDsf6HRzq2R1Gg_D599BYlW";
-const APP_VERSION="v10";
+const APP_VERSION="v11";
 function fail(msg){ const b=document.getElementById("banner"); if(b) b.textContent=(msg+" ["+APP_VERSION+"]"); const r=document.getElementById("retry"); if(r) r.hidden=false; }
 window.addEventListener("error",e=>{ if(e.target&&e.target.tagName) return; fail("Erro no app: "+(e.message||"desconhecido")); });
 window.addEventListener("unhandledrejection",e=>{ const m=(e.reason&&e.reason.message)||String(e.reason||""); if(/Failed to fetch|NetworkError|Load failed/i.test(m)) fail("Sem conexão com o banco de dados. Verifique a internet."); else fail("Erro no app: "+m); });
@@ -314,8 +321,27 @@ const PARAMS = [
   {k:"nh3",  l:"Amônia",      u:"ppm", d:2, ok:[0,0.02],      w:[0,0.1],     alvo:"0"},
   {k:"no2",  l:"Nitrito",     u:"ppm", d:2, ok:[0,0.05],      w:[0,0.2],     alvo:"0"},
 ];
-const GROUPS = ["Zoanthus","Palythoa","Mushroom","Ricordea","Soft","LPS"];
-const GROUP_LABEL = {Zoanthus:"Zoanthus",Palythoa:"Palythoa",Mushroom:"Mushroom",Ricordea:"Ricordea",Soft:"Leather / soft",LPS:"LPS"};
+const GROUPS = ["zoa","mush","soft","lps","sps","gorg","nps","outros"];
+const GROUP_LABEL = {zoa:"Zoantídeos (zoas e palys)",mush:"Cogumelos (corallimorphs)",soft:"Softs (corais moles)",lps:"LPS",sps:"SPS",gorg:"Gorgônias",nps:"Não fotossintéticos (NPS)",outros:"Outros"};
+const GROUP_SHORT = {zoa:"Zoantídeo",mush:"Cogumelo",soft:"Soft",lps:"LPS",sps:"SPS",gorg:"Gorgônia",nps:"NPS",outros:"Outro"};
+const SPECIES = {
+  zoa:["Zoanthus","Palythoa","Protopalythoa","Isaurus"],
+  mush:["Discosoma","Rhodactis","Ricordea florida","Ricordea yuma","Amplexidiscus","Actinodiscus"],
+  soft:["Sarcophyton (toadstool)","Sinularia","Lobophytum","Cladiella (colt)","Capnella (kenya tree)","Nephthea","Litophyton","Klyxum","Xenia","Anthelia","Cespitularia","Clavularia (clove polyps)","Briareum (GSP)","Pachyclavularia (star polyps)","Studeriotes","Sarcophyton elegans"],
+  lps:["Euphyllia (torch, hammer, frogspawn)","Duncanopsammia (duncan)","Acanthastrea","Micromussa (acan lord)","Homophyllia","Blastomussa","Dipsastraea / Favia","Favites","Goniastrea","Platygyra (brain)","Caulastrea (candy cane)","Fungia / plate","Lobophyllia","Trachyphyllia (open brain)","Catalaphyllia (elegance)","Cynarina","Scolymia","Echinophyllia","Echinopora","Mycedium","Oxypora","Pectinia","Turbinaria","Galaxea","Plerogyra (bubble)","Physogyra","Goniopora","Alveopora","Leptastrea","Cyphastrea"],
+  sps:["Acropora","Montipora","Stylophora","Pocillopora","Seriatopora (birdsnest)","Porites","Anacropora","Hydnophora","Psammocora","Pavona","Leptoseris","Stylocoeniella"],
+  gorg:["Antillogorgia","Pterogorgia","Eunicea","Plexaura","Muricea","Diodogorgia","Rumphella","Menella"],
+  nps:["Tubastraea (sun coral)","Dendronephthya","Scleronephthya","Chironephthya","Balanophyllia"],
+  outros:["Anêmona","Clam (Tridacna)","Esponja","Macroalga"]
+};
+const OLD_GROUP = {Zoanthus:["zoa","Zoanthus"],Palythoa:["zoa","Palythoa"],Mushroom:["mush",""],Ricordea:["mush","Ricordea florida"],Soft:["soft",""],LPS:["lps",""]};
+function normCoral(c){ if(OLD_GROUP[c.group]){ const [g,sp]=OLD_GROUP[c.group]; c=Object.assign({},c,{group:g,species:c.species||sp}); } if(!GROUP_LABEL[c.group]) c=Object.assign({},c,{group:"outros"}); return c; }
+function speciesField(prefix,attr,group,species,otherOpen){
+  const list=SPECIES[group]||[]; const inList=list.includes(species); const other=otherOpen||(!!species&&!inList);
+  return `<div class="field"><label for="${prefix}-sp">Espécie / gênero</label>
+    <select id="${prefix}-sp" ${attr}="speciesSel"><option value="" ${!species&&!other?"selected":""}>— escolher —</option>${list.map(x=>`<option ${x===species?"selected":""}>${esc(x)}</option>`).join("")}<option value="__other" ${other?"selected":""}>Outra…</option></select>
+    ${other?`<input id="${prefix}-sp-other" ${attr}="species" value="${esc(inList?"":species||"")}" placeholder="Digite a espécie ou gênero" style="margin-top:6px">`:""}</div>`;
+}
 const STATUS = {matriz:"Matriz", crescendo:"Crescendo", disponivel:"Disponível", reservado:"Reservado", vendido:"Vendido", perdido:"Perdido"};
 const INACTIVE = new Set(["vendido","perdido"]);
 const ZONES = {"":"—", centro:"Centro (luz alta)", meio:"Meio", periferia:"Periferia (luz baixa)"};
@@ -351,7 +377,7 @@ function photoBox(c, light, extraTag, frag){
   let pick = null;
   if(frag){ const p=frag.photos||{}; const o=light==="blue"?"white":"blue"; if(p[light]) pick={id:p[light],fallback:false}; else if(p[o]) pick={id:p[o],fallback:true}; }
   if(!pick) pick = coverFor(c, light);
-  const g = "g-"+(c.group||"Zoanthus");
+  const g = "g-"+(c.group||"outros");
   if(!pick) return `<div class="ph empty ${g}">${esc(initials(c.name))}${extraTag||""}</div>`;
   const isRef=(c.gallery||[]).some(g=>g.id===pick.id&&g.ref);
   const tag = (pick.fallback ? `<span class="tag">só luz ${light==="blue"?"branca":"azul"}</span>` : "") + (isRef?`<span class="tag tagref">referência</span>`:"");
@@ -488,7 +514,7 @@ function filterBar(view,count,total){
       <button class="btn fbtn" data-act="ftoggle" aria-expanded="${!!S.fOpen}" aria-controls="fpanel">Filtros${n?` <span class="badge">${n}</span>`:""}<span class="chev" aria-hidden="true">▾</span></button></div>
     ${S.fOpen?`<div class="card fpanel" id="fpanel">
       <div class="field"><label for="f-sort">Ordenar por</label><select id="f-sort" data-fk="sort">${SORTS.map(([k,l])=>`<option value="${k}" ${F.sort===k?"selected":""}>${l}</option>`).join("")}</select></div>
-      <div class="field"><span class="flabel">Grupo</span><div class="filters">${chip("group","","Todos")}${used.map(g=>chip("group",g,GROUP_LABEL[g])).join("")}</div></div>
+      <div class="field"><span class="flabel">Grupo</span><div class="filters">${chip("group","","Todos")}${used.map(g=>chip("group",g,GROUP_SHORT[g])).join("")}</div></div>
       <div class="field"><span class="flabel">Foto</span><div class="filters">${PHOTO_F.map(([k,l])=>chip("photo",k,l)).join("")}</div></div>
       <div class="frow"><span class="small muted">Mostrando ${count} de ${total}</span><span style="margin-left:auto;display:flex;gap:6px"><button class="btn ghost sm" data-act="fclear" ${n?"":"disabled"}>Limpar</button><button class="btn sm" data-act="ftoggle">Fechar</button></span></div>
     </div>`:(n||F.q?`<span class="small muted">${count} de ${total}${F.sort!=="name"?" · "+sortLabel:""}</span>`:"")}
@@ -500,7 +526,7 @@ function vCorais(){
   const cards=list.map(({c})=>{const t=totals(c); const avail=t.avail?`<span class="tag tagr">${t.avail} à venda</span>`:"";
     return `<button class="ccard" data-act="open" data-id="${esc(c.id)}">${photoBox(c,S.light,avail)}
       <div class="info"><span class="name">${esc(c.name)}</span><span class="stats num">${t.frags} muda${t.frags===1?"":"s"} · ${t.polyps} pólipo${t.polyps===1?"":"s"}</span>
-      <span><span class="chip neutral">${esc(GROUP_LABEL[c.group]||c.group||"—")}</span></span></div></button>`;}).join("");
+      <span><span class="chip neutral">${esc(c.species?c.species.replace(/ \(.*\)$/,""):(GROUP_SHORT[c.group]||"—"))}</span></span></div></button>`;}).join("");
   return `<section class="sec">
     <div class="sechead"><h2>Corais</h2><div class="toolbar">${lightSeg()}${laySeg("corais")}<button class="btn primary edit" data-act="newcoral">Adicionar</button></div></div>
     ${filterBar("corais",list.length,all.length)}
@@ -587,7 +613,7 @@ function render(){
 }
 
 /* ---------- coral modal ---------- */
-function openCoral(id){ const c=S.corals.find(x=>x.id===id); if(!c) return; S.draft=clone(c); S.dirty=false; S.confirmClose=false; S.newUploads=[]; S.webOpen=false; S.webBlob=null; S.galleryPick=null; S.modalKind="coral"; renderModal(); }
+function openCoral(id){ const c=S.corals.find(x=>x.id===id); if(!c) return; S.draft=clone(c); S.dirty=false; S.confirmClose=false; S.newUploads=[]; S.webOpen=false; S.webBlob=null; S.spOther=false; S.galleryPick=null; S.modalKind="coral"; renderModal(); }
 function gallerySorted(c){ return (c.gallery||[]).slice().sort((a,b)=>a.d<b.d?1:-1); }
 function growthSVG(h){
   if(!h||h.length<2) return `<div class="nodata">O gráfico de crescimento aparece a partir da segunda contagem de pólipos.</div>`;
@@ -644,6 +670,7 @@ function modalCoral(){
           <div class="form">
             <div class="field wide"><label for="cf-name">Nome</label><input id="cf-name" data-cf="name" value="${esc(c.name)}"></div>
             <div class="field"><label for="cf-group">Grupo</label><select id="cf-group" data-cf="group">${GROUPS.map(g=>`<option value="${g}" ${c.group===g?"selected":""}>${GROUP_LABEL[g]}</option>`).join("")}</select></div>
+            ${speciesField("cf","data-cf",c.group,c.species||"",S.spOther)}
             <div class="field"><label for="cf-zone">Zona do rack</label><select id="cf-zone" data-cf="zone">${Object.entries(ZONES).map(([k,l])=>`<option value="${k}" ${(c.zone||"")===k?"selected":""}>${l}</option>`).join("")}</select></div>
             <div class="field"><label for="cf-origin">Origem</label><input id="cf-origin" data-cf="origin" value="${esc(c.origin||"")}" placeholder="Display, loja, leilão…"></div>
             <div class="field"><label for="cf-added">Entrada no mudário</label><input id="cf-added" type="date" data-cf="addedAt" value="${esc(c.addedAt||"")}"></div>
@@ -678,19 +705,32 @@ function modalTest(){
         <button type="submit" class="btn primary">Salvar teste</button></div>
     </form></div></div>`;
 }
+function ncThumb(light){
+  const id=S.nc.cover[light]; const isRef=S.nc.gallery.some(g=>g.id===id&&g.ref);
+  return `<div class="ncph"><div class="ph ${id?"":"empty g-"+S.nc.group}">${id?`<img data-pid="${esc(id)}" src="${esc(imgURL(id))}" alt="">`:`<span class="small">sem foto</span>`}${isRef?`<span class="tag tagref">referência</span>`:""}</div>
+    <span class="small"><span class="dot ${light}"></span> ${light==="blue"?"Azul":"Branca"}</span>
+    <button class="btn sm" type="button" data-act="ncphoto" data-l="${light}">${id?"Trocar":"Enviar"}</button></div>`;
+}
 function modalNewCoral(){
+  const n=S.nc;
   return `<div class="overlay" data-act="bgclose"><div class="modal narrow" role="dialog" aria-modal="true" aria-label="Novo coral">
     <div class="mhead"><h2>Adicionar coral</h2><button class="btn" data-act="close">Fechar</button></div>
     <form class="mbody" id="coralform">
       <div class="form">
-        <div class="field wide"><label for="n-name">Nome</label><input id="n-name" name="name" required placeholder="Zoanthus Utter Chaos"></div>
-        <div class="field"><label for="n-group">Grupo</label><select id="n-group" name="group">${GROUPS.map(g=>`<option value="${g}">${GROUP_LABEL[g]}</option>`).join("")}</select></div>
-        <div class="field"><label for="n-polyps">Pólipos na primeira muda</label><input id="n-polyps" name="polyps" type="number" min="0" value="1"></div>
-        <div class="field"><label for="n-origin">Origem</label><input id="n-origin" name="origin" placeholder="Loja, leilão, display…"></div>
-        <div class="field"><label for="n-dip">Dip feito em</label><input id="n-dip" name="dippedAt" type="date" value="${today()}"></div>
+        <div class="field wide"><label for="n-name">Nome</label><input id="n-name" data-nc="name" required value="${esc(n.name)}" placeholder="Zoanthus Utter Chaos"></div>
+        <div class="field"><label for="n-group">Grupo</label><select id="n-group" data-nc="group">${GROUPS.map(g=>`<option value="${g}" ${n.group===g?"selected":""}>${GROUP_LABEL[g]}</option>`).join("")}</select></div>
+        ${speciesField("n","data-nc",n.group,n.species,n.spOther)}
+        <div class="field"><label for="n-polyps">Pólipos na primeira muda</label><input id="n-polyps" data-nc="polyps" type="number" min="0" value="${esc(n.polyps)}"></div>
+        <div class="field"><label for="n-origin">Origem</label><input id="n-origin" data-nc="origin" value="${esc(n.origin)}" placeholder="Loja, leilão, display…"></div>
+        <div class="field"><label for="n-dip">Dip feito em</label><input id="n-dip" data-nc="dippedAt" type="date" value="${esc(n.dippedAt)}"></div>
+      </div>
+      <div class="sec"><h3>Fotos (opcional)</h3>
+        <div class="ncphotos">${ncThumb("blue")}${ncThumb("white")}</div>
+        <div><button class="btn sm ghost" type="button" data-act="webtoggle" aria-expanded="${!!S.webOpen}">Buscar na internet</button></div>
+        ${S.webOpen?webPanel({name:n.name||""}):""}
       </div>
       <span class="small muted">Coral de terceiros entra só depois de dip e inspeção.</span>
-      <div class="toolbar" style="justify-content:flex-end"><button type="submit" class="btn primary">Adicionar</button></div>
+      <div class="toolbar" style="justify-content:flex-end"><button type="submit" class="btn primary" ${S.saving?"disabled":""}>Adicionar</button></div>
     </form></div></div>`;
 }
 function renderModal(){
@@ -700,7 +740,7 @@ function renderModal(){
   document.body.style.overflow="hidden"; const nov=m.querySelector(".overlay"); if(nov) nov.scrollTop=sc;
 }
 function closeModal(){ if(S.modalKind==="coral" && S.dirty){ S.confirmClose=true; renderModal(); return; } closeModalNow(); }
-function closeModalNow(){ S.modalKind=null; S.draft=null; S.editTest=null; S.confirm={}; S.dirty=false; S.confirmClose=false; S.newUploads=[]; renderModal(); }
+function closeModalNow(){ if(S.modalKind==="newcoral"&&S.nc&&S.nc.uploads.length&&S.sb){ S.sb.storage.from("photos").remove(S.nc.uploads).catch(()=>{}); S.nc.uploads=[]; } S.modalKind=null; S.draft=null; S.editTest=null; S.confirm={}; S.dirty=false; S.confirmClose=false; S.newUploads=[]; renderModal(); }
 
 /* ---------- saving ---------- */
 const saveT={}, pending={}, chains={};
@@ -817,7 +857,9 @@ async function fetchRemote(url){
 async function importBlob(blob,light,srcUrl){
   let src; try{ src=await loadImage(blob); }catch(e){ toast("Formato de imagem não suportado.",true); return; }
   const cv=await openCropper(src); if(!cv) return;
-  const id=await uploadCanvas(cv); if(!id||!S.draft) return;
+  const id=await uploadCanvas(cv); if(!id) return;
+  if(S.modalKind==="newcoral"&&S.nc){ S.nc.uploads.push(id); S.nc.cover[light]=id; S.nc.gallery.push({id,light,d:today(),ref:true,src:srcUrl||""}); S.webBlob=null; S.webOpen=false; renderModal(); toast("Foto de referência adicionada."); return; }
+  if(!S.draft) return;
   (S.newUploads=S.newUploads||[]).push(id);
   const c=S.draft; c.cover=Object.assign({},c.cover,{[light]:id}); c.gallery=c.gallery||[];
   c.gallery.push({id,light,d:today(),ref:true,src:srcUrl||""});
@@ -856,6 +898,7 @@ const A = {
   async savecoral(el){ await saveCoralNow(); if(!S.dirty && el.dataset.close){ closeModalNow(); } },
   async discard(el){ await discardCoral(); if(el.dataset.close) closeModalNow(); else renderModal(); },
   keepediting(){ S.confirmClose=false; renderModal(); },
+  async ncphoto(el){ const l=el.dataset.l; const id=await uploadPhoto(); if(!id||S.modalKind!=="newcoral") return; S.nc.uploads.push(id); S.nc.cover[l]=id; S.nc.gallery.push({id,light:l,d:today()}); renderModal(); },
   webtoggle(){ S.webOpen=!S.webOpen; S.webBlob=null; renderModal(); },
   async webpaste(){
     const st=document.getElementById("web-status");
@@ -886,7 +929,7 @@ const A = {
   newtest(){ S.editTest=null; S.modalKind="test"; renderModal(); },
   edittest(el){ const t=S.tests.find(x=>x.id===el.dataset.id); if(!t) return; S.editTest=clone(t); S.modalKind="test"; renderModal(); },
   async deltest(){ if(!armConfirm("test")){ renderModal(); return; } const id=S.editTest.id; try{ await S.db.doc("tests/"+id).delete(); toast("Teste apagado"); closeModal(); }catch(e){ toast(errMsg(e),true); } },
-  newcoral(){ S.modalKind="newcoral"; renderModal(); setTimeout(()=>{const n=$("#n-name"); n&&n.focus();},30); },
+  newcoral(){ S.nc={name:"",group:"zoa",species:"",spOther:false,polyps:1,origin:"",dippedAt:today(),cover:{},gallery:[],uploads:[]}; S.webOpen=false; S.webBlob=null; S.modalKind="newcoral"; renderModal(); setTimeout(()=>{const n=$("#n-name"); n&&n.focus();},30); },
   gpick(el){ S.galleryPick = S.galleryPick===el.dataset.id?null:el.dataset.id; renderModal(); },
   pol(el){ const f=fragById(el.dataset.frag); if(!f) return; f.polyps=Math.max(0,(+f.polyps||0)+(+el.dataset.d)); snapFrag(f); snapHistory(S.draft); renderModal(); saveCoral(900); },
   addfrag(){ const c=S.draft; c.frags=c.frags||[]; const f={id:rid("f"),label:"Muda "+(c.frags.length+1),polyps:1,status:"crescendo",photos:{},history:[]}; snapFrag(f); c.frags.push(f); snapHistory(c); renderModal(); saveCoral(300); },
@@ -902,6 +945,7 @@ document.addEventListener("keydown", e=>{ if(e.key==="Escape" && S.modalKind && 
 document.addEventListener("input", e=>{
   const t=e.target;
   if(t.id==="q"){ if(S.F[S.view]){ S.F[S.view].q=t.value; render(); } return; }
+  if(t.dataset.nc && S.nc && t.tagName!=="SELECT"){ S.nc[t.dataset.nc]=t.value; return; }
   if(!S.draft) return;
   if(t.dataset.cf && t.type!=="checkbox" && t.tagName!=="SELECT"){ S.draft[t.dataset.cf]=t.value; if(t.dataset.cf==="name"){ const h=document.querySelector(".mhead h2"); if(h) h.textContent=t.value; } saveCoral(900); }
   if(t.dataset.ff==="label"){ const f=fragById(t.dataset.frag); if(f){ f.label=t.value; saveCoral(900);} }
@@ -910,7 +954,14 @@ document.addEventListener("input", e=>{
 document.addEventListener("change", e=>{
   const t=e.target;
   if(t.dataset.fk && S.F[S.view]){ S.F[S.view][t.dataset.fk]=t.value; saveF(); render(); return; }
+  if(t.dataset.nc && S.nc){
+    if(t.dataset.nc==="group"){ S.nc.group=t.value; S.nc.species=""; S.nc.spOther=false; renderModal(); return; }
+    if(t.dataset.nc==="speciesSel"){ if(t.value==="__other"){ S.nc.spOther=true; S.nc.species=""; } else { S.nc.spOther=false; S.nc.species=t.value; } renderModal(); return; }
+    S.nc[t.dataset.nc]=t.value; return;
+  }
   if(!S.draft) return;
+  if(t.dataset.cf==="group"){ S.draft.group=t.value; S.draft.species=""; S.spOther=false; renderModal(); saveCoral(); return; }
+  if(t.dataset.cf==="speciesSel"){ if(t.value==="__other"){ S.spOther=true; S.draft.species=""; } else { S.spOther=false; S.draft.species=t.value; } renderModal(); saveCoral(); return; }
   if(t.dataset.cf==="check"){ S.draft.check=t.checked; saveCoral(200); }
   else if(t.dataset.cf && (t.tagName==="SELECT"||t.type==="date")){ S.draft[t.dataset.cf]=t.value; saveCoral(200); }
   if(t.dataset.ff==="status"){ const f=fragById(t.dataset.frag); if(f){ f.status=t.value; snapHistory(S.draft); renderModal(); saveCoral(200);} }
@@ -947,11 +998,13 @@ document.addEventListener("submit", async e=>{
   }
   if(fm.id==="coralform"){
     if(!S.db){ toast("Banco indisponível nesta visualização.",true); return; }
-    const name=String(fd.get("name")||"").trim(); if(!name) return;
-    const id=rid("c"); const f={id:rid("f"),label:"Muda 1",polyps:Math.max(0,+fd.get("polyps")||0),status:"matriz",photos:{},history:[]}; snapFrag(f);
-    const c={name,group:fd.get("group"),origin:String(fd.get("origin")||""),dippedAt:fd.get("dippedAt")||"",addedAt:today(),zone:"",notes:"",check:false,cover:{},gallery:[],frags:[f],history:[]}; snapHistory(c);
+    const n=S.nc; const name=String(n.name||"").trim(); if(!name){ toast("Informe o nome.",true); return; }
+    const id=rid("c"); const f={id:rid("f"),label:"Muda 1",polyps:Math.max(0,+n.polyps||0),status:"matriz",photos:{},history:[]}; snapFrag(f);
+    const c={name,group:n.group,species:String(n.species||"").trim(),origin:String(n.origin||""),dippedAt:n.dippedAt||"",addedAt:today(),zone:"",notes:"",check:false,cover:Object.assign({},n.cover),gallery:n.gallery.slice(),frags:[f],history:[]}; snapHistory(c);
     c.updatedAt=new Date().toISOString();
-    try{ await S.db.doc("corals/"+id).set(c); S.modalKind=null; renderModal(); S.corals.push(Object.assign({id},c)); openCoral(id); toast("Coral adicionado"); }catch(err){ toast(errMsg(err),true); }
+    S.saving=true;
+    try{ await S.db.doc("corals/"+id).set(c); S.nc.uploads=[]; S.modalKind=null; renderModal(); S.corals.push(Object.assign({id},c)); openCoral(id); toast("Coral adicionado"); }catch(err){ toast(errMsg(err),true); }
+    finally{ S.saving=false; }
   }
 });
 
@@ -990,7 +1043,7 @@ function makeDB(sb){
     let gt=false,gc=false; const done=()=>{ if(gt&&gc){ clearTimeout(timer); setBanner(""); } };
     S.db.collection("tests").onSnapshot(s=>{ S.tests=s.docs.map(d=>Object.assign({id:d.id},d.data())); gt=true; done(); render(); }, e=>{ clearTimeout(timer); setBanner(errMsg(e)); });
     S.db.collection("corals").onSnapshot(s=>{
-      S.corals=s.docs.map(d=>Object.assign({id:d.id},d.data())); gc=true; done();
+      S.corals=s.docs.map(d=>normCoral(Object.assign({id:d.id},d.data()))); gc=true; done();
       if(gc&&S.session&&!S.corals.length&&!S.tests.length) setBanner("Nenhum dado visível para esta conta. Entre com o e-mail dono do mudário.");
       render();
       if(S.modalKind==="coral" && S.draft && !S.dirty && !S.saving){
@@ -1015,6 +1068,9 @@ function makeDB(sb){
   document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible" && S.session && !S.modalKind) S.db.reload(); });
 })();
 try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(()=>{}); }catch(_){}
+["gesturestart","gesturechange","gestureend"].forEach(ev=>document.addEventListener(ev,e=>{ if(!(e.target&&e.target.closest&&e.target.closest(".cropbox"))) e.preventDefault(); },{passive:false}));
+document.addEventListener("touchmove",e=>{ if(e.touches&&e.touches.length>1&&!(e.target&&e.target.closest&&e.target.closest(".cropbox"))) e.preventDefault(); },{passive:false});
+let lastTouchEnd=0; document.addEventListener("touchend",e=>{ const now=Date.now(); if(now-lastTouchEnd<300&&!(e.target&&e.target.closest&&e.target.closest("input,textarea,select,.cropbox"))) e.preventDefault(); lastTouchEnd=now; },{passive:false});
 if("serviceWorker" in navigator) window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
 </script>
 </body>
