@@ -1,7 +1,7 @@
 {
-  "name": "Mudário",
-  "short_name": "Mudário",
-  "description": "Controle do frag tank: parâmetros, corais, mudas e vitrine.",
+  "name": "Tank You",
+  "short_name": "Tank You",
+  "description": "Controle do mudário: parâmetros, corais, mudas e vitrine.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
