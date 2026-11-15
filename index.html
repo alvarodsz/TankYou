@@ -792,6 +792,7 @@ function makeDB(sb){
     render(); });
   document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible" && S.session && !S.modalKind) S.db.reload(); });
 })();
+try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(()=>{}); }catch(_){}
 if("serviceWorker" in navigator) window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
 </script>
 </body>
