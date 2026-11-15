@@ -231,6 +231,11 @@ tr:last-child td{border-bottom:0}
 .fpanel{padding:12px 14px;display:grid;gap:12px}
 .fpanel select{padding:8px 10px;border-radius:9px;border:1px solid var(--line);background:var(--surface);width:100%}
 .flabel{font-size:12px;color:var(--muted);font-weight:500}
+.webp{padding:12px 14px;display:grid;gap:10px}
+.webp .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.webp .steps{margin:0;padding-left:18px;display:grid;gap:2px}
+.webp a.btn{text-decoration:none;justify-content:flex-start;text-align:left}
+.ph .tagref{left:auto;right:8px;bottom:8px;background:rgba(240,128,58,.92)}
 .seg.lay button{padding:7px 10px}
 .grid.list{grid-template-columns:1fr;gap:8px}
 .grid.list .ccard{grid-template-columns:96px minmax(0,1fr);align-items:center}
@@ -292,7 +297,7 @@ tr:last-child td{border-bottom:0}
 "use strict";
 const SB_URL="https://dkypcjxvtvgsbdovlkpk.supabase.co";
 const SB_KEY="sb_publishable_8I4n91ShSDsf6HRzq2R1Gg_D599BYlW";
-const APP_VERSION="v9";
+const APP_VERSION="v10";
 function fail(msg){ const b=document.getElementById("banner"); if(b) b.textContent=(msg+" ["+APP_VERSION+"]"); const r=document.getElementById("retry"); if(r) r.hidden=false; }
 window.addEventListener("error",e=>{ if(e.target&&e.target.tagName) return; fail("Erro no app: "+(e.message||"desconhecido")); });
 window.addEventListener("unhandledrejection",e=>{ const m=(e.reason&&e.reason.message)||String(e.reason||""); if(/Failed to fetch|NetworkError|Load failed/i.test(m)) fail("Sem conexão com o banco de dados. Verifique a internet."); else fail("Erro no app: "+m); });
@@ -348,7 +353,8 @@ function photoBox(c, light, extraTag, frag){
   if(!pick) pick = coverFor(c, light);
   const g = "g-"+(c.group||"Zoanthus");
   if(!pick) return `<div class="ph empty ${g}">${esc(initials(c.name))}${extraTag||""}</div>`;
-  const tag = pick.fallback ? `<span class="tag">só luz ${light==="blue"?"branca":"azul"}</span>` : "";
+  const isRef=(c.gallery||[]).some(g=>g.id===pick.id&&g.ref);
+  const tag = (pick.fallback ? `<span class="tag">só luz ${light==="blue"?"branca":"azul"}</span>` : "") + (isRef?`<span class="tag tagref">referência</span>`:"");
   return `<div class="ph"><img data-pid="${esc(pick.id)}" src="${esc(imgURL(pick.id))}" alt="${esc(c.name)} sob luz ${light==="blue"?"azul":"branca"}" loading="lazy">${tag}${extraTag||""}</div>`;
 }
 let toastT; function toast(msg, err){ const t=$("#toast"); t.textContent=msg; t.className="toast on"+(err?" err":""); clearTimeout(toastT); toastT=setTimeout(()=>t.className="toast",err?4200:1600); }
@@ -581,7 +587,7 @@ function render(){
 }
 
 /* ---------- coral modal ---------- */
-function openCoral(id){ const c=S.corals.find(x=>x.id===id); if(!c) return; S.draft=clone(c); S.dirty=false; S.confirmClose=false; S.newUploads=[]; S.galleryPick=null; S.modalKind="coral"; renderModal(); }
+function openCoral(id){ const c=S.corals.find(x=>x.id===id); if(!c) return; S.draft=clone(c); S.dirty=false; S.confirmClose=false; S.newUploads=[]; S.webOpen=false; S.webBlob=null; S.galleryPick=null; S.modalKind="coral"; renderModal(); }
 function gallerySorted(c){ return (c.gallery||[]).slice().sort((a,b)=>a.d<b.d?1:-1); }
 function growthSVG(h){
   if(!h||h.length<2) return `<div class="nodata">O gráfico de crescimento aparece a partir da segunda contagem de pólipos.</div>`;
@@ -628,7 +634,9 @@ function modalCoral(){
           <div class="toolbar edit">
             <button class="btn sm" data-act="cover" data-l="blue"><span class="dot blue"></span>Nova foto azul</button>
             <button class="btn sm" data-act="cover" data-l="white"><span class="dot white"></span>Nova foto branca</button>
+            <button class="btn sm ghost" data-act="webtoggle" aria-expanded="${!!S.webOpen}">Buscar na internet</button>
           </div>
+          ${S.webOpen?`<div class="edit">${webPanel(c)}</div>`:""}
           <span class="small muted">Você recorta em 1:1 antes de salvar. As fotos antigas ficam no histórico abaixo.</span>
           ${gal.length?`<div><h3 style="margin-bottom:6px">Histórico de fotos</h3><div class="gallery">${gal.map(gp=>`<button data-act="gpick" data-id="${esc(gp.id)}" aria-pressed="${S.galleryPick===gp.id}"><img data-pid="${esc(gp.id)}" src="${esc(imgURL(gp.id))}" alt="" loading="lazy"><span>${gp.light==="blue"?"Az":"Br"} ${fmtDate(gp.d,true)}</span></button>`).join("")}</div></div>`:""}
         </div>
@@ -787,6 +795,9 @@ async function uploadPhoto(){
   const f=await pickFile(); if(!f) return null;
   let src; try{ src=await loadImage(f); }catch(e){ toast("Formato de imagem não suportado. Use JPG ou PNG.",true); return null; }
   const cv=await openCropper(src); if(!cv) return null;
+  return uploadCanvas(cv);
+}
+async function uploadCanvas(cv){
   toast("Enviando foto…");
   const blob=await new Promise(r=>cv.toBlob(r,"image/jpeg",0.86));
   const path="p/"+today()+"-"+rid("")+".jpg";
@@ -794,6 +805,44 @@ async function uploadPhoto(){
   if(error){ toast(errMsg(error),true); return null; }
   return path;
 }
+async function fetchRemote(url){
+  const {data:{session}}=await S.sb.auth.getSession(); if(!session) throw new Error("Entre na sua conta.");
+  const r=await fetch(SB_URL+"/functions/v1/fetch-image",{method:"POST",headers:{"Content-Type":"application/json",apikey:SB_KEY,Authorization:"Bearer "+session.access_token},body:JSON.stringify({url})});
+  if(!r.ok){ let e={}; try{ e=await r.json(); }catch(_){}
+    const m={invalid_url:"Esse link não é válido.",blocked_url:"Esse endereço não é permitido.",not_an_image:"O link não aponta para uma imagem. No Google, use \"Copiar endereço da imagem\".",too_large:"Imagem grande demais (máx. 10 MB).",fetch_failed:"O site da imagem recusou o download. Tente outra foto.",not_owner:"Só a conta dona do mudário pode importar."}[e.error];
+    throw new Error(m||"Não consegui baixar a imagem.");
+  }
+  return await r.blob();
+}
+async function importBlob(blob,light,srcUrl){
+  let src; try{ src=await loadImage(blob); }catch(e){ toast("Formato de imagem não suportado.",true); return; }
+  const cv=await openCropper(src); if(!cv) return;
+  const id=await uploadCanvas(cv); if(!id||!S.draft) return;
+  (S.newUploads=S.newUploads||[]).push(id);
+  const c=S.draft; c.cover=Object.assign({},c.cover,{[light]:id}); c.gallery=c.gallery||[];
+  c.gallery.push({id,light,d:today(),ref:true,src:srcUrl||""});
+  S.light=light; S.galleryPick=null; S.webBlob=null; S.webOpen=false; renderModal(); saveCoral();
+  toast("Foto de referência adicionada. Toque em Salvar alterações.");
+}
+function webPanel(c){
+  const q=(c.name||"")+" coral";
+  const g="https://www.google.com/search?tbm=isch&q="+encodeURIComponent(q);
+  return `<div class="card webp">
+    <h3>Buscar foto na internet</h3>
+    <ol class="small muted steps"><li>Abra o Google Imagens (já pesquisando o nome).</li><li>Toque e segure a foto escolhida → <b>Copiar endereço da imagem</b> ou <b>Copiar imagem</b>.</li><li>Volte aqui e cole abaixo.</li></ol>
+    <a class="btn" href="${esc(g)}" target="_blank" rel="noopener">Abrir Google Imagens: “${esc(q)}”</a>
+    <div class="field"><label for="web-url">Link da imagem (ou toque e segure para colar a imagem)</label>
+      <input id="web-url" type="url" inputmode="url" placeholder="https://…" autocomplete="off"></div>
+    <div class="row"><button class="btn sm ghost" data-act="webpaste">Colar da área de transferência</button><span class="small muted" id="web-status">${S.webBlob?"Imagem colada, pronta para importar.":""}</span></div>
+    <div class="row"><button class="btn sm" data-act="webimport" data-l="blue"><span class="dot blue"></span>Usar como foto azul</button><button class="btn sm" data-act="webimport" data-l="white"><span class="dot white"></span>Usar como foto branca</button></div>
+    <span class="small muted">Fotos da internet ficam marcadas como <b>referência</b> e não substituem a foto real da muda na vitrine.</span>
+  </div>`;
+}
+document.addEventListener("paste", e=>{
+  if(!e.target||e.target.id!=="web-url") return;
+  const items=[...((e.clipboardData&&e.clipboardData.items)||[])]; const img=items.find(i=>i.type&&i.type.startsWith("image/"));
+  if(img){ e.preventDefault(); S.webBlob=img.getAsFile(); const st=document.getElementById("web-status"); if(st) st.textContent="Imagem colada, pronta para importar."; }
+});
 document.addEventListener("error", e=>{ const im=e.target; if(im&&im.tagName==="IMG"&&im.dataset.pid) im.classList.add("broken"); }, true);
 
 /* ---------- actions ---------- */
@@ -807,6 +856,24 @@ const A = {
   async savecoral(el){ await saveCoralNow(); if(!S.dirty && el.dataset.close){ closeModalNow(); } },
   async discard(el){ await discardCoral(); if(el.dataset.close) closeModalNow(); else renderModal(); },
   keepediting(){ S.confirmClose=false; renderModal(); },
+  webtoggle(){ S.webOpen=!S.webOpen; S.webBlob=null; renderModal(); },
+  async webpaste(){
+    const st=document.getElementById("web-status");
+    try{
+      if(navigator.clipboard&&navigator.clipboard.read){ const items=await navigator.clipboard.read();
+        for(const it of items){ const t=it.types.find(x=>x.startsWith("image/")); if(t){ S.webBlob=await it.getType(t); if(st) st.textContent="Imagem colada, pronta para importar."; return; } } }
+      if(navigator.clipboard&&navigator.clipboard.readText){ const txt=(await navigator.clipboard.readText()).trim(); if(/^https?:\/\//i.test(txt)){ const i=document.getElementById("web-url"); if(i) i.value=txt; if(st) st.textContent="Link colado."; return; } }
+      if(st) st.textContent="Nada útil na área de transferência. Copie a imagem ou o endereço dela.";
+    }catch(err){ if(st) st.textContent="O navegador não deixou ler a área de transferência. Toque e segure no campo de link e escolha Colar."; }
+  },
+  async webimport(el){
+    const light=el.dataset.l; const i=document.getElementById("web-url"); const url=i?i.value.trim():"";
+    try{
+      if(S.webBlob){ await importBlob(S.webBlob,light,""); return; }
+      if(!url){ toast("Cole o link ou a imagem primeiro.",true); return; }
+      toast("Baixando imagem…"); const blob=await fetchRemote(url); await importBlob(blob,light,url);
+    }catch(err){ toast(err.message||"Falha ao importar.",true); }
+  },
   cancelpass(){ S.recovery=false; render(); },
   light(el){ S.light=el.dataset.l; S.galleryPick=null; if(S.modalKind==="coral") renderModal(); render(); },
   ftoggle(){ S.fOpen=!S.fOpen; render(); },
