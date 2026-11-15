@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1424">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mudário">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<title>Controle do Mudário</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: cabeçalho fixo com abas; painel de resumo → detalhe; corais em grade quadrada (WYSIWYG) */
+:root{
+  --bg:#eef2f6; --surface:#ffffff; --ink:#0d1a2b; --muted:#56677d; --line:#d6dee8;
+  --accent:#3b4cd4; --accent-ink:#ffffff; --band:rgba(59,76,212,.10);
+  --ok:#1d7f55; --warn:#a86b12; --bad:#bf3b35;
+  --ok-bg:rgba(29,127,85,.11); --warn-bg:rgba(168,107,18,.12); --bad-bg:rgba(191,59,53,.11);
+  --display:"Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --body:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#08101c; --surface:#0f1a2a; --ink:#e5ecf5; --muted:#8fa0b7; --line:#1f2f46;
+    --accent:#8391ff; --accent-ink:#0a0f1e; --band:rgba(131,145,255,.15);
+    --ok:#4cc38a; --warn:#e3aa4c; --bad:#f2766d;
+    --ok-bg:rgba(76,195,138,.13); --warn-bg:rgba(227,170,76,.14); --bad-bg:rgba(242,118,109,.14);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#08101c; --surface:#0f1a2a; --ink:#e5ecf5; --muted:#8fa0b7; --line:#1f2f46;
+  --accent:#8391ff; --accent-ink:#0a0f1e; --band:rgba(131,145,255,.15);
+  --ok:#4cc38a; --warn:#e3aa4c; --bad:#f2766d;
+  --ok-bg:rgba(76,195,138,.13); --warn-bg:rgba(227,170,76,.14); --bad-bg:rgba(242,118,109,.14);
+  color-scheme: dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:26px;font-weight:700}
+h2{font-size:19px;font-weight:700}
+h3{font-size:15px;font-weight:600;font-family:var(--body)}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+
+header{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--line)}
+.hwrap{max-width:1180px;margin:0 auto;padding:calc(14px + env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 0 max(16px,env(safe-area-inset-left));display:grid;gap:10px}
+.brand{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
+.brand .sub{font-size:13px;color:var(--muted)}
+nav{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+nav a{padding:9px 14px;border-radius:10px 10px 0 0;text-decoration:none;color:var(--muted);font-weight:500;white-space:nowrap;border-bottom:2px solid transparent}
+nav a[aria-current="page"]{color:var(--ink);border-bottom-color:var(--accent)}
+main{max-width:1180px;margin:0 auto;padding:18px max(16px,env(safe-area-inset-right)) calc(80px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));display:grid;gap:22px}
+.banner{padding:10px 14px;border-radius:10px;background:var(--warn-bg);color:var(--ink);font-size:14px}
+.banner:empty{display:none}
+
+.sec{display:grid;gap:12px}
+.sechead{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.tile{padding:12px 14px;display:grid;gap:2px;position:relative;overflow:hidden}
+.tile .lab{font-size:13px;color:var(--muted)}
+.tile .val{font-size:24px;font-weight:500}
+.tile .val small{font-size:13px;color:var(--muted);font-family:var(--body);margin-left:3px}
+.tile .meta{font-size:12px;color:var(--muted)}
+.tile.s-ok{box-shadow:inset 3px 0 0 var(--ok)}
+.tile.s-warn{box-shadow:inset 3px 0 0 var(--warn)}
+.tile.s-bad{box-shadow:inset 3px 0 0 var(--bad)}
+.tile.s-none{box-shadow:inset 3px 0 0 var(--line)}
+.stock .val{font-family:var(--display);font-size:30px;font-weight:700}
+
+.chip{display:inline-flex;align-items:center;gap:4px;padding:1px 8px;border-radius:999px;font-size:12px;font-weight:500;white-space:nowrap;border:1px solid transparent}
+.chip.ok{background:var(--ok-bg);color:var(--ok)}
+.chip.warn{background:var(--warn-bg);color:var(--warn)}
+.chip.bad{background:var(--bad-bg);color:var(--bad)}
+.chip.neutral{background:transparent;border-color:var(--line);color:var(--muted)}
+.chip.acc{background:var(--band);color:var(--accent)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 14px;border-radius:10px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:500;font-size:14px;min-height:38px}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--bad)}
+.btn.sm{padding:4px 10px;min-height:30px;font-size:13px}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:transparent;padding:7px 14px;cursor:pointer;font-size:14px;font-weight:500;color:var(--muted);display:flex;align-items:center;gap:6px}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.dot.blue{background:#4057ff;box-shadow:0 0 6px #4057ff}
+.dot.white{background:#f4f1e8;border:1px solid #b9b3a2}
+
+/* charts */
+.charts{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px}
+.chart{padding:12px 14px 8px;display:grid;gap:4px}
+.chart .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.chart .top .v{font-size:20px;font-weight:500}
+.chart svg{width:100%;height:auto;display:block}
+.chart svg text{fill:var(--muted);font:10px var(--mono)}
+.nodata{padding:28px 0;text-align:center;color:var(--muted);font-size:13px}
+
+/* table */
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--muted);white-space:nowrap;position:sticky;top:0;background:var(--surface)}
+td.n{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+td.c-ok{color:var(--ok)} td.c-warn{color:var(--warn);background:var(--warn-bg)} td.c-bad{color:var(--bad);background:var(--bad-bg)}
+td.obs{min-width:240px;max-width:380px;color:var(--muted)}
+tr:last-child td{border-bottom:0}
+
+/* corals */
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.search{padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface);min-width:0;flex:1 1 180px;max-width:280px}
+.filters{display:flex;gap:6px;flex-wrap:wrap}
+.filters button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 12px;font-size:13px;cursor:pointer;color:var(--muted)}
+.filters button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);background:var(--band)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:12px}
+.ccard{overflow:hidden;cursor:pointer;text-align:left;padding:0;display:grid;border:1px solid var(--line);background:var(--surface);border-radius:14px}
+.ccard:hover{border-color:var(--accent)}
+.ccard .info{padding:10px 12px 12px;display:grid;gap:4px}
+.ccard .name{font-weight:600;line-height:1.3}
+.ccard .stats{font-size:13px;color:var(--muted)}
+.ph{aspect-ratio:1/1;width:100%;position:relative;overflow:hidden;background:var(--line)}
+.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.ph .tag{position:absolute;left:8px;bottom:8px;background:rgba(5,10,20,.68);color:#fff;font-size:11px;padding:2px 8px;border-radius:999px}
+.ph .tagr{left:auto;right:8px;top:8px;bottom:auto}
+.ph.empty{display:grid;place-items:center;color:rgba(255,255,255,.92);font-family:var(--display);font-size:30px;font-weight:700}
+.g-Zoanthus{background:linear-gradient(140deg,#1f3a8f,#6a2fb8 60%,#e0743a)}
+.g-Palythoa{background:linear-gradient(140deg,#2c2a6e,#7a3d9c 60%,#c5578f)}
+.g-Mushroom{background:linear-gradient(140deg,#13406b,#1c7a8c 55%,#d6a43c)}
+.g-Ricordea{background:linear-gradient(140deg,#0f4a52,#2a9a6b 55%,#f0b13e)}
+.g-Soft{background:linear-gradient(140deg,#3a3f52,#6c7a5a 60%,#c7b37a)}
+.g-LPS{background:linear-gradient(140deg,#14305e,#2d7e6f 55%,#9fd65a)}
+
+/* modal */
+.overlay{position:fixed;inset:0;background:rgba(3,8,16,.55);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:28px 16px;overflow-y:auto}
+.modal{background:var(--bg);border:1px solid var(--line);border-radius:16px;width:100%;max-width:980px;display:grid}
+.modal.narrow{max-width:620px}
+.mhead{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line);position:sticky;top:-28px;background:var(--bg);border-radius:16px 16px 0 0;z-index:2}
+.mbody{padding:18px;display:grid;gap:20px}
+.cols{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:760px){
+  .cols{grid-template-columns:1fr}
+  .overlay{padding:0}
+  .modal{border-radius:0;min-height:100%}
+  .mhead{top:0;border-radius:0;padding-top:calc(14px + env(safe-area-inset-top))}
+}
+.photo{display:grid;gap:10px}
+.photo .ph{border-radius:14px}
+.gallery{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
+.gallery button{flex:0 0 58px;padding:0;border:2px solid transparent;border-radius:8px;overflow:hidden;cursor:pointer;background:none;position:relative}
+.gallery button[aria-pressed="true"]{border-color:var(--accent)}
+.gallery img{width:54px;height:54px;object-fit:cover;display:block}
+.gallery span{position:absolute;left:0;right:0;bottom:0;font-size:9px;background:rgba(5,10,20,.65);color:#fff;text-align:center}
+.form{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.field{display:grid;gap:4px}
+.field.wide{grid-column:1/-1}
+.field label{font-size:12px;color:var(--muted);font-weight:500}
+.field input,.field select,.field textarea{padding:8px 10px;border-radius:9px;border:1px solid var(--line);background:var(--surface);width:100%;min-width:0}
+.field textarea{min-height:70px;resize:vertical}
+.field .hint{font-size:11px;color:var(--muted)}
+.check{display:flex;align-items:center;gap:8px;font-size:14px}
+.frags{display:grid;gap:8px}
+.frag{display:grid;grid-template-columns:64px minmax(0,1fr);gap:12px;padding:10px;align-items:start}
+.frag .ph{border-radius:9px;width:64px}
+.frag .ph.empty{font-size:16px}
+.frag .fbody{display:grid;gap:8px}
+.frag .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.frag input.lbl{font-weight:600;border:1px solid transparent;background:transparent;padding:3px 6px;border-radius:7px;width:min(100%,220px)}
+.frag input.lbl:hover,.frag input.lbl:focus{border-color:var(--line);background:var(--surface)}
+.frag select,.frag input.price{padding:5px 8px;border-radius:8px;border:1px solid var(--line);background:var(--surface);font-size:13px}
+.frag input.price{width:96px}
+.frag.st-vendido,.frag.st-perdido{opacity:.6}
+.stepper{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--surface)}
+.stepper button{border:0;background:transparent;width:32px;height:32px;cursor:pointer;font-size:17px}
+.stepper button:hover{background:var(--band)}
+.stepper span{min-width:72px;text-align:center;font-size:14px}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:999px;font-size:14px;z-index:90;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+.toast.err{background:var(--bad);color:#fff}
+.empty-state{padding:26px;text-align:center;color:var(--muted);display:grid;gap:10px;justify-items:center}
+.notes{display:grid;gap:8px}
+.note{padding:10px 14px;display:grid;gap:2px}
+.vit-head{padding:18px;display:grid;gap:6px}
+.price{font-family:var(--mono);font-weight:500}
+.ro .edit{display:none !important}
+.login{max-width:420px;margin:40px auto;padding:22px;display:grid;gap:14px}
+.brand .out{margin-left:auto}
+.ph img.broken{display:none}
+.ph:has(img.broken){display:grid;place-items:center}
+.ph:has(img.broken)::after{content:"Foto indisponível · envie de novo";font-size:12px;color:var(--muted);padding:8px;text-align:center}
+.crop-ov{z-index:70}
+.cropbox{width:100%;max-width:520px;margin:0 auto;aspect-ratio:1/1;border-radius:12px;overflow:hidden;background:#000}
+.cropbox canvas{display:block;touch-action:none;cursor:grab}
+@media (prefers-reduced-motion: reduce){*{transition:none !important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="hwrap">
+    <div class="brand">
+      <h1>Mudário</h1>
+      <span class="sub" id="sub">70 × 36 × 25 cm · AIO · ~50 L líquidos · softs e LPS</span>
+      <button class="btn sm ghost out" id="signout" data-act="signout" hidden>Sair</button>
+    </div>
+    <nav id="nav">
+      <a href="#painel" data-v="painel">Painel</a>
+      <a href="#parametros" data-v="parametros">Parâmetros</a>
+      <a href="#corais" data-v="corais">Corais</a>
+      <a href="#vitrine" data-v="vitrine">Vitrine</a>
+    </nav>
+  </div>
+</header>
+<main>
+  <div class="banner" id="banner">Carregando dados do mudário…</div>
+  <div id="view"></div>
+</main>
+<div id="modal"></div>
+<div id="cropper"></div>
+<div class="toast" id="toast"></div>
+
+<script src="supabase.js"></script>
+<script>
+"use strict";
+const SB_URL="https://dkypcjxvtvgsbdovlkpk.supabase.co";
+const SB_KEY="sb_publishable_8I4n91ShSDsf6HRzq2R1Gg_D599BYlW";
+const START = "2026-10-17"; // início da ciclagem
+const PARAMS = [
+  {k:"temp", l:"Temperatura", u:"°C",  d:1, ok:[25,26],       w:[24.5,26.5], alvo:"25–26 °C"},
+  {k:"sg",   l:"Salinidade",  u:"",    d:3, ok:[1.025,1.026], w:[1.024,1.027], alvo:"1,025–1,026"},
+  {k:"ph",   l:"pH",          u:"",    d:2, ok:[7.9,8.4],     w:[7.8,8.5],   alvo:"7,9–8,4"},
+  {k:"kh",   l:"KH",          u:"dKH", d:1, ok:[8,9],         w:[7.5,9.5],   alvo:"8,5 ± 0,5"},
+  {k:"ca",   l:"Cálcio",      u:"ppm", d:0, ok:[400,440],     w:[380,460],   alvo:"400–440"},
+  {k:"mg",   l:"Magnésio",    u:"ppm", d:0, ok:[1300,1400],   w:[1250,1450], alvo:"1.300–1.400"},
+  {k:"no3",  l:"Nitrato",     u:"ppm", d:1, ok:[5,15],        w:[1,25],      alvo:"5–15"},
+  {k:"po4",  l:"Fosfato",     u:"ppm", d:2, ok:[0.03,0.10],   w:[0.01,0.20], alvo:"0,03–0,10"},
+  {k:"nh3",  l:"Amônia",      u:"ppm", d:2, ok:[0,0.02],      w:[0,0.1],     alvo:"0"},
+  {k:"no2",  l:"Nitrito",     u:"ppm", d:2, ok:[0,0.05],      w:[0,0.2],     alvo:"0"},
+];
+const GROUPS = ["Zoanthus","Palythoa","Mushroom","Ricordea","Soft","LPS"];
+const GROUP_LABEL = {Zoanthus:"Zoanthus",Palythoa:"Palythoa",Mushroom:"Mushroom",Ricordea:"Ricordea",Soft:"Leather / soft",LPS:"LPS"};
+const STATUS = {matriz:"Matriz", crescendo:"Crescendo", disponivel:"Disponível", reservado:"Reservado", vendido:"Vendido", perdido:"Perdido"};
+const INACTIVE = new Set(["vendido","perdido"]);
+const ZONES = {"":"—", centro:"Centro (luz alta)", meio:"Meio", periferia:"Periferia (luz baixa)"};
+
+const S = {
+  view:"painel", tests:[], corals:[], light:"blue", group:"", q:"",
+  loaded:{t:false,c:false}, db:null, assets:null, canEdit:true,
+  draft:null, galleryPick:null, modalKind:null, editTest:null, confirm:{}
+};
+
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const clone = o => JSON.parse(JSON.stringify(o));
+const rid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+function today(){ const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); }
+function fmtDate(iso, short){ if(!iso) return "—"; const [y,m,d]=iso.split("-"); return short? `${d}/${m}` : `${d}/${m}/${y.slice(2)}`; }
+function dayN(iso){ return Math.round((Date.parse(iso)-Date.parse(START))/864e5); }
+function fmt(v,d){ if(v==null||v==="") return "—"; return Number(v).toLocaleString("pt-BR",{minimumFractionDigits:d,maximumFractionDigits:d}); }
+function fmtV(p,t){ const v=t[p.k]; if(v==null) return "—"; const q=(t.qual||{})[p.k]; return (q||"")+fmt(v,p.d); }
+function parseNum(s){ s=String(s??"").trim(); if(!s) return {v:null}; let q=""; if(/^[<>]/.test(s)){ q=s[0]; s=s.slice(1).trim(); }
+  if(/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) s=s.replace(/\./g,""); s=s.replace(",","."); const v=Number(s); return isNaN(v)?{v:null,bad:true}:{v,q}; }
+function minutes(t){ const m=String(t||"").match(/(\d{1,2})\s*[h:]\s*(\d{2})?/i); return m? (+m[1])*60+(+(m[2]||0)) : 0; }
+const tkey = t => t.date + String(minutes(t.time)).padStart(4,"0");
+function status(p,v,q){ if(v==null) return "none"; const x = q==="<" ? v*0.98 : q===">" ? v*1.02 : v;
+  if(x>=p.ok[0]-1e-9 && x<=p.ok[1]+1e-9) return "ok"; if(x>=p.w[0]-1e-9 && x<=p.w[1]+1e-9) return "warn"; return "bad"; }
+const SLAB = {ok:"No alvo", warn:"Atenção", bad:"Fora", none:"Sem dado"};
+const imgURL = id => id ? `${SB_URL}/storage/v1/object/public/photos/${id}` : "";
+function totals(c){ const fs=(c.frags||[]).filter(f=>!INACTIVE.has(f.status)); return {frags:fs.length, polyps:fs.reduce((a,f)=>a+(+f.polyps||0),0), avail:fs.filter(f=>f.status==="disponivel").length}; }
+function initials(n){ return String(n||"?").replace(/^(Zoanthus|Zoa|Palythoa|Mush|Mushroom)\s+/i,"").split(/\s+/).slice(0,2).map(w=>w[0]||"").join("").toUpperCase(); }
+function coverFor(c, light){ const cv=c.cover||{}; const other = light==="blue"?"white":"blue"; if(cv[light]) return {id:cv[light],fallback:false}; if(cv[other]) return {id:cv[other],fallback:true}; return null; }
+function photoBox(c, light, extraTag, frag){
+  let pick = null;
+  if(frag){ const p=frag.photos||{}; const o=light==="blue"?"white":"blue"; if(p[light]) pick={id:p[light],fallback:false}; else if(p[o]) pick={id:p[o],fallback:true}; }
+  if(!pick) pick = coverFor(c, light);
+  const g = "g-"+(c.group||"Zoanthus");
+  if(!pick) return `<div class="ph empty ${g}">${esc(initials(c.name))}${extraTag||""}</div>`;
+  const tag = pick.fallback ? `<span class="tag">só luz ${light==="blue"?"branca":"azul"}</span>` : "";
+  return `<div class="ph"><img data-pid="${esc(pick.id)}" src="${esc(imgURL(pick.id))}" alt="${esc(c.name)} sob luz ${light==="blue"?"azul":"branca"}" loading="lazy">${tag}${extraTag||""}</div>`;
+}
+let toastT; function toast(msg, err){ const t=$("#toast"); t.textContent=msg; t.className="toast on"+(err?" err":""); clearTimeout(toastT); toastT=setTimeout(()=>t.className="toast",err?4200:1600); }
+function errMsg(e){ const c=e&&e.code; if(c==="42501"||/row-level security|Unauthorized|403/i.test((e&&e.message)||"")) return "Sem permissão: entre com a conta dona do mudário."; if(e&&/Failed to fetch|NetworkError/i.test(e.message||"")) return "Sem conexão. Tente de novo."; if(c==="quota_exceeded") return "Espaço do banco cheio: apague registros antigos."; if(c==="invalid_argument") return "Não foi possível salvar: sem permissão de edição ou dado inválido."; if(c==="resource_exhausted") return "Muitas alterações seguidas. Espere alguns segundos."; return "Falha ao salvar. Tente de novo."; }
+function setBanner(t){ $("#banner").textContent = t||""; }
+function lightSeg(){ return `<div class="seg" role="group" aria-label="Luz da foto">
+  <button data-act="light" data-l="blue" aria-pressed="${S.light==="blue"}"><span class="dot blue"></span>Azul</button>
+  <button data-act="light" data-l="white" aria-pressed="${S.light==="white"}"><span class="dot white"></span>Branca</button></div>`; }
+
+/* ---------- views ---------- */
+function sortedTests(){ return S.tests.slice().sort((a,b)=>tkey(a)<tkey(b)?-1:1); }
+function latestFor(p){ const ts=sortedTests(); for(let i=ts.length-1;i>=0;i--){ if(ts[i][p.k]!=null) return ts[i]; } return null; }
+
+function vPainel(){
+  const ts = sortedTests();
+  const tiles = PARAMS.map(p=>{ const t=latestFor(p); const st=t?status(p,t[p.k],(t.qual||{})[p.k]):"none";
+    return `<div class="card tile s-${st}"><span class="lab">${p.l}</span>
+      <span class="val num">${t?esc(fmtV(p,t)):"—"}${p.u&&t?`<small>${p.u}</small>`:""}</span>
+      <span class="meta">${t?`<span class="chip ${st==="none"?"neutral":st}">${SLAB[st]}</span> em ${fmtDate(t.date,true)}`:"sem medição"} · alvo ${p.alvo}</span></div>`; }).join("");
+  const all = S.corals; let fr=0,po=0,av=0; all.forEach(c=>{const t=totals(c); fr+=t.frags; po+=t.polyps; av+=t.avail;});
+  const last = ts[ts.length-1];
+  const notes = ts.slice(-3).reverse().filter(t=>t.obs).map(t=>`<div class="card note"><span class="small muted">${fmtDate(t.date)}${t.time?" · "+esc(t.time):""} · dia ${dayN(t.date)}</span><span>${esc(t.obs)}</span></div>`).join("");
+  return `
+  <section class="sec">
+    <div class="sechead"><h2>Últimas leituras</h2>
+      <div class="toolbar"><span class="small muted">Dia ${dayN(today())} desde a ciclagem${last?` · último teste ${fmtDate(last.date)}`:""}</span>
+      <button class="btn primary edit" data-act="newtest">Registrar teste</button></div></div>
+    <div class="tiles">${tiles}</div>
+  </section>
+  <section class="sec">
+    <div class="sechead"><h2>Estoque</h2><a class="btn ghost sm" href="#corais">Ver corais</a></div>
+    <div class="tiles stock">
+      <div class="card tile"><span class="lab">Corais (variedades)</span><span class="val num">${all.length}</span></div>
+      <div class="card tile"><span class="lab">Mudas ativas</span><span class="val num">${fr}</span></div>
+      <div class="card tile"><span class="lab">Pólipos</span><span class="val num">${po}</span></div>
+      <div class="card tile"><span class="lab">Disponíveis p/ venda</span><span class="val num">${av}</span></div>
+    </div>
+  </section>
+  ${notes?`<section class="sec"><h2>Notas recentes</h2><div class="notes">${notes}</div></section>`:""}
+  <section class="sec"><div class="toolbar"><button class="btn ghost sm" data-act="exportar">Exportar backup (JSON)</button><span class="small muted">Guarde uma cópia de vez em quando: o plano gratuito do Supabase não faz backup.</span></div></section>`;
+}
+
+function chartSVG(p, pts){
+  if(!pts.length) return `<div class="nodata">Sem medições</div>`;
+  const W=320,H=132,L=40,R=12,T=10,B=22;
+  const xs=pts.map(a=>a.x); let x0=Math.min(...xs), x1=Math.max(...xs); if(x1-x0<864e5){x0-=864e5*2;x1+=864e5*2;}
+  const vs=pts.map(a=>a.v); const dmin=Math.min(...vs), dmax=Math.max(...vs);
+  let y0=Math.min(dmin,p.ok[0]), y1=Math.max(dmax,p.ok[1]); let pad=(y1-y0)*0.18; if(!pad) pad=Math.abs(y1)*0.05||1; y0-=pad; y1+=pad;
+  if(dmin>=0 && p.ok[0]>=0 && y0<0) y0 = -(y1)*0.04;
+  const sx=x=>L+(x-x0)/(x1-x0)*(W-L-R), sy=v=>T+(1-(v-y0)/(y1-y0))*(H-T-B);
+  const bt=sy(p.ok[1]), bb=sy(p.ok[0]);
+  let g=`<rect x="${L}" y="${bt.toFixed(1)}" width="${W-L-R}" height="${Math.max(1.5,bb-bt).toFixed(1)}" fill="var(--band)"/>`;
+  g+=`<line x1="${L}" x2="${W-R}" y1="${H-B}" y2="${H-B}" stroke="var(--line)"/>`;
+  const lab=(v,y)=>`<text x="${L-6}" y="${(y+3).toFixed(1)}" text-anchor="end">${esc(fmt(v,p.d))}</text><line x1="${L}" x2="${W-R}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--accent)" stroke-opacity=".35" stroke-dasharray="3 3"/>`;
+  if(bb-bt>=12){ g+=lab(p.ok[1],bt)+lab(p.ok[0],bb); } else { g+=lab(p.ok[1],bt); }
+  const path=pts.map((a,i)=>(i?"L":"M")+sx(a.x).toFixed(1)+" "+sy(a.v).toFixed(1)).join(" ");
+  g+=`<path d="${path}" fill="none" stroke="var(--ink)" stroke-opacity=".75" stroke-width="1.6"/>`;
+  pts.forEach((a,i)=>{ const st=status(p,a.v,a.q); const last=i===pts.length-1; const col=st==="ok"?"var(--ok)":st==="warn"?"var(--warn)":"var(--bad)";
+    g+=`<circle cx="${sx(a.x).toFixed(1)}" cy="${sy(a.v).toFixed(1)}" r="${last?4.5:2.8}" fill="${last?col:"var(--surface)"}" stroke="${col}" stroke-width="1.6"><title>${fmtDate(a.date)}: ${esc((a.q||"")+fmt(a.v,p.d))}</title></circle>`; });
+  const d0=new Date(pts[0].x), d1=new Date(pts[pts.length-1].x); const ds=d=>String(d.getUTCDate()).padStart(2,"0")+"/"+String(d.getUTCMonth()+1).padStart(2,"0");
+  g+=`<text x="${sx(pts[0].x).toFixed(1)}" y="${H-6}" text-anchor="${pts.length>1?"start":"middle"}">${ds(d0)}</text>`;
+  if(pts.length>1) g+=`<text x="${sx(pts[pts.length-1].x).toFixed(1)}" y="${H-6}" text-anchor="end">${ds(d1)}</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(p.l)} ao longo do tempo">${g}</svg>`;
+}
+
+function vParametros(){
+  const ts=sortedTests();
+  const charts = PARAMS.map(p=>{
+    const pts = ts.filter(t=>t[p.k]!=null).map(t=>({x:Date.parse(t.date)+minutes(t.time)*6e4, v:+t[p.k], q:(t.qual||{})[p.k], date:t.date}));
+    const lt=pts[pts.length-1]; const st=lt?status(p,lt.v,lt.q):"none";
+    return `<div class="card chart"><div class="top"><h3>${p.l}${p.u?` <span class="muted small">(${p.u})</span>`:""}</h3>
+      <span class="v num">${lt?esc((lt.q||"")+fmt(lt.v,p.d)):"—"}</span></div>
+      <div class="small muted">alvo ${p.alvo} · <span class="chip ${st==="none"?"neutral":st}">${SLAB[st]}</span> · ${pts.length} medições</div>
+      ${chartSVG(p,pts)}</div>`; }).join("");
+  const order=["temp","ph","nh3","no2","no3","sg","kh","po4","ca","mg"].map(k=>PARAMS.find(p=>p.k===k));
+  const rows = ts.slice().reverse().map(t=>`<tr>
+     <td class="n">${fmtDate(t.date)}<div class="muted small">dia ${dayN(t.date)}</div></td><td class="n">${esc(t.time||"")}</td>
+     ${order.map(p=>{const st=status(p,t[p.k],(t.qual||{})[p.k]); return `<td class="n ${st!=="none"?"c-"+st:""}">${t[p.k]!=null?esc(fmtV(p,t)):""}</td>`;}).join("")}
+     <td class="obs">${esc(t.obs||"")}</td>
+     <td class="edit"><button class="btn sm ghost" data-act="edittest" data-id="${esc(t.id)}">Editar</button></td></tr>`).join("");
+  return `
+  <section class="sec">
+    <div class="sechead"><h2>Parâmetros</h2><button class="btn primary edit" data-act="newtest">Registrar teste</button></div>
+    <p class="small muted" style="margin:0">Faixa azul = alvo do projeto. Ponto cheio = última medição, colorido pelo status.</p>
+    <div class="charts">${charts}</div>
+  </section>
+  <section class="sec">
+    <h2>Histórico de testes</h2>
+    <div class="card tablewrap"><table><thead><tr><th>Data</th><th>Hora</th>${order.map(p=>`<th>${p.k==="nh3"?"NH₃":p.k==="no2"?"NO₂":p.k==="no3"?"NO₃":p.k==="po4"?"PO₄":p.l}</th>`).join("")}<th>Obs</th><th class="edit"></th></tr></thead>
+    <tbody>${rows||`<tr><td colspan="14" class="muted">Nenhum teste registrado.</td></tr>`}</tbody></table></div>
+  </section>`;
+}
+
+function vCorais(){
+  const q=S.q.trim().toLowerCase();
+  const list=S.corals.filter(c=>(!S.group||c.group===S.group)&&(!q||String(c.name).toLowerCase().includes(q))).sort((a,b)=>String(a.name).localeCompare(b.name,"pt-BR"));
+  const used=GROUPS.filter(g=>S.corals.some(c=>c.group===g));
+  const cards=list.map(c=>{const t=totals(c); const avail=t.avail?`<span class="tag tagr">${t.avail} à venda</span>`:"";
+    return `<button class="ccard" data-act="open" data-id="${esc(c.id)}">${photoBox(c,S.light,avail)}
+      <div class="info"><span class="name">${esc(c.name)}</span><span class="stats num">${t.frags} muda${t.frags===1?"":"s"} · ${t.polyps} pólipo${t.polyps===1?"":"s"}</span>
+      <span><span class="chip neutral">${esc(GROUP_LABEL[c.group]||c.group||"—")}</span></span></div></button>`;}).join("");
+  return `<section class="sec">
+    <div class="sechead"><h2>Corais</h2><div class="toolbar">${lightSeg()}<button class="btn primary edit" data-act="newcoral">Adicionar coral</button></div></div>
+    <div class="toolbar"><input class="search" id="q" type="search" placeholder="Buscar por nome" value="${esc(S.q)}" aria-label="Buscar coral">
+      <div class="filters"><button data-act="group" data-g="" aria-pressed="${!S.group}">Todos</button>${used.map(g=>`<button data-act="group" data-g="${g}" aria-pressed="${S.group===g}">${GROUP_LABEL[g]}</button>`).join("")}</div></div>
+    ${cards?`<div class="grid">${cards}</div>`:`<div class="card empty-state">${S.corals.length?"Nenhum coral com esse filtro.":"Nenhum coral cadastrado ainda."}</div>`}
+  </section>`;
+}
+
+function vVitrine(){
+  const items=[]; S.corals.forEach(c=>(c.frags||[]).forEach(f=>{ if(f.status==="disponivel") items.push({c,f}); }));
+  items.sort((a,b)=>String(a.c.name).localeCompare(b.c.name,"pt-BR"));
+  const cards=items.map(({c,f})=>`<button class="ccard" data-act="open" data-id="${esc(c.id)}">${photoBox(c,S.light,"",f)}
+     <div class="info"><span class="name">${esc(c.name)}</span>
+     <span class="stats num">${esc(f.label||"Muda")} · ${+f.polyps||0} pólipo${(+f.polyps||0)===1?"":"s"}</span>
+     <span class="price">${f.price?("R$ "+fmt(f.price,0)):"Sob consulta"}</span>
+     ${f.photoDate?`<span class="small muted">foto de ${fmtDate(f.photoDate)}</span>`:""}</div></button>`).join("");
+  return `<section class="sec">
+    <div class="card vit-head"><h2>Vitrine</h2><span class="muted small">Cada foto é da muda que está à venda, sob luz azul e branca. O que você vê é o que leva.</span>
+      <div class="toolbar">${lightSeg()}<span class="chip acc">${items.length} muda${items.length===1?"":"s"} disponíve${items.length===1?"l":"is"}</span></div></div>
+    ${cards?`<div class="grid">${cards}</div>`:`<div class="card empty-state"><span>Nenhuma muda marcada como <b>Disponível</b>.</span><span class="small">Abra um coral, mude o status da muda para Disponível e envie a foto dela.</span></div>`}
+  </section>`;
+}
+
+function vLogin(){
+  return `<form class="card login" id="loginform">
+    <h2>${S.signup?"Criar conta":"Entrar"}</h2>
+    <span class="small muted">${S.signup?"Use o e-mail dono do mudário. Você vai receber um link de confirmação.":"Entre para ver e editar o mudário."}</span>
+    <div class="field"><label for="l-email">E-mail</label><input id="l-email" name="email" type="email" autocomplete="email" required></div>
+    <div class="field"><label for="l-pass">Senha</label><input id="l-pass" name="password" type="password" minlength="8" autocomplete="${S.signup?"new-password":"current-password"}" required></div>
+    <button class="btn primary" type="submit">${S.signup?"Criar conta":"Entrar"}</button>
+    <button class="btn ghost sm" type="button" data-act="authmode">${S.signup?"Já tenho conta":"Primeiro acesso? Criar conta"}</button>
+  </form>`;
+}
+function render(){
+  if(S.authReady && !S.session){ $("#view").innerHTML=vLogin(); $("#nav").hidden=true; $("#signout").hidden=true; return; }
+  $("#nav").hidden=false; $("#signout").hidden=!S.session;
+  const v=S.view; document.querySelectorAll("nav a").forEach(a=>a.toggleAttribute("aria-current",false)||a.setAttribute("aria-current",a.dataset.v===v?"page":"false"));
+  const html = v==="parametros"?vParametros(): v==="corais"?vCorais(): v==="vitrine"?vVitrine(): vPainel();
+  const view=$("#view"); const hadQ=document.activeElement&&document.activeElement.id==="q"; const pos=hadQ?document.activeElement.selectionStart:0;
+  view.innerHTML=html;
+  if(hadQ){ const q=$("#q"); if(q){ q.focus(); try{q.setSelectionRange(pos,pos);}catch(e){} } }
+}
+
+/* ---------- coral modal ---------- */
+function openCoral(id){ const c=S.corals.find(x=>x.id===id); if(!c) return; S.draft=clone(c); S.galleryPick=null; S.modalKind="coral"; renderModal(); }
+function gallerySorted(c){ return (c.gallery||[]).slice().sort((a,b)=>a.d<b.d?1:-1); }
+function growthSVG(h){
+  if(!h||h.length<2) return `<div class="nodata">O gráfico de crescimento aparece a partir da segunda contagem de pólipos.</div>`;
+  const W=520,H=150,L=34,R=14,T=12,B=24; const xs=h.map(a=>Date.parse(a.d)); const x0=Math.min(...xs), x1=Math.max(...xs)||x0+1;
+  const ys=h.map(a=>a.polyps); const y1=Math.max(...ys)*1.15+1, y0=0;
+  const sx=x=>L+(x-x0)/((x1-x0)||1)*(W-L-R), sy=v=>T+(1-(v-y0)/(y1-y0))*(H-T-B);
+  let g=`<line x1="${L}" x2="${W-R}" y1="${H-B}" y2="${H-B}" stroke="var(--line)"/>`;
+  const mx=Math.max(...ys); g+=`<line x1="${L}" x2="${W-R}" y1="${sy(mx).toFixed(1)}" y2="${sy(mx).toFixed(1)}" stroke="var(--line)" stroke-dasharray="3 3"/><text x="${L-6}" y="${(sy(mx)+3).toFixed(1)}" text-anchor="end">${mx}</text><text x="${L-6}" y="${H-B+3}" text-anchor="end">0</text>`;
+  const pth=h.map((a,i)=>(i?"L":"M")+sx(xs[i]).toFixed(1)+" "+sy(a.polyps).toFixed(1)).join(" ");
+  g+=`<path d="${pth} L${sx(xs[xs.length-1]).toFixed(1)} ${H-B} L${sx(xs[0]).toFixed(1)} ${H-B} Z" fill="var(--band)"/><path d="${pth}" fill="none" stroke="var(--accent)" stroke-width="2"/>`;
+  h.forEach((a,i)=>{ const last=i===h.length-1; g+=`<circle cx="${sx(xs[i]).toFixed(1)}" cy="${sy(a.polyps).toFixed(1)}" r="${last?4.5:2.6}" fill="${last?"var(--accent)":"var(--surface)"}" stroke="var(--accent)" stroke-width="1.6"><title>${fmtDate(a.d)}: ${a.polyps} pólipos, ${a.frags} mudas</title></circle>`; });
+  g+=`<text x="${L}" y="${H-6}">${fmtDate(h[0].d,true)}</text><text x="${W-R}" y="${H-6}" text-anchor="end">${fmtDate(h[h.length-1].d,true)}</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Pólipos ao longo do tempo" style="width:100%;height:auto"><style>text{fill:var(--muted);font:10px var(--mono)}</style>${g}</svg>`;
+}
+function modalCoral(){
+  const c=S.draft; const t=totals(c); const gal=gallerySorted(c);
+  let main;
+  if(S.galleryPick){ const gp=gal.find(x=>x.id===S.galleryPick); main = gp?`<div class="ph"><img data-pid="${esc(gp.id)}" src="${esc(imgURL(gp.id))}" alt="Foto de ${fmtDate(gp.d)}"><span class="tag">${gp.light==="blue"?"Azul":"Branca"} · ${fmtDate(gp.d)}${gp.frag?" · muda":""}</span></div>`:photoBox(c,S.light); }
+  else main = photoBox(c,S.light);
+  const frags=(c.frags||[]).map((f,i)=>`
+    <div class="card frag st-${esc(f.status)}">
+      ${photoBox(c,S.light,"",f)}
+      <div class="fbody">
+        <div class="row"><input class="lbl" data-ff="label" data-frag="${esc(f.id)}" value="${esc(f.label||("Muda "+(i+1)))}" aria-label="Nome da muda">
+          <span class="stepper"><button class="edit" data-act="pol" data-frag="${esc(f.id)}" data-d="-1" aria-label="Menos um pólipo">−</button><span class="num">${+f.polyps||0} pól.</span><button class="edit" data-act="pol" data-frag="${esc(f.id)}" data-d="1" aria-label="Mais um pólipo">+</button></span></div>
+        <div class="row">
+          <select data-ff="status" data-frag="${esc(f.id)}" aria-label="Status da muda">${Object.entries(STATUS).map(([k,l])=>`<option value="${k}" ${f.status===k?"selected":""}>${l}</option>`).join("")}</select>
+          <input class="price num" data-ff="price" data-frag="${esc(f.id)}" inputmode="decimal" placeholder="R$ preço" value="${f.price!=null?esc(String(f.price).replace(".",",")):""}" aria-label="Preço">
+          <button class="btn sm ghost edit" data-act="fragphoto" data-frag="${esc(f.id)}" data-l="blue"><span class="dot blue"></span>Foto</button>
+          <button class="btn sm ghost edit" data-act="fragphoto" data-frag="${esc(f.id)}" data-l="white"><span class="dot white"></span>Foto</button>
+          <button class="btn sm ghost danger edit" data-act="delfrag" data-frag="${esc(f.id)}">${S.confirm["f"+f.id]?"Confirmar":"Remover"}</button>
+        </div>
+        <span class="small muted">${(f.history&&f.history.length)?`${f.history.length} contage${f.history.length===1?"m":"ns"} · desde ${fmtDate(f.history[0].d)}`:""}${f.photoDate?` · foto de ${fmtDate(f.photoDate)}`:""}</span>
+      </div>
+    </div>`).join("");
+  return `<div class="overlay" data-act="bgclose"><div class="modal" role="dialog" aria-modal="true" aria-label="${esc(c.name)}">
+    <div class="mhead"><div><h2>${esc(c.name)}</h2><span class="small muted num">${t.frags} muda${t.frags===1?"":"s"} ativas · ${t.polyps} pólipos${t.avail?` · ${t.avail} à venda`:""}</span></div>
+      <button class="btn" data-act="close">Fechar</button></div>
+    <div class="mbody">
+      <div class="cols">
+        <div class="photo">
+          ${main}
+          <div class="toolbar">${lightSeg()}</div>
+          <div class="toolbar edit">
+            <button class="btn sm" data-act="cover" data-l="blue"><span class="dot blue"></span>Nova foto azul</button>
+            <button class="btn sm" data-act="cover" data-l="white"><span class="dot white"></span>Nova foto branca</button>
+          </div>
+          <span class="small muted">Você recorta em 1:1 antes de salvar. As fotos antigas ficam no histórico abaixo.</span>
+          ${gal.length?`<div><h3 style="margin-bottom:6px">Histórico de fotos</h3><div class="gallery">${gal.map(gp=>`<button data-act="gpick" data-id="${esc(gp.id)}" aria-pressed="${S.galleryPick===gp.id}"><img data-pid="${esc(gp.id)}" src="${esc(imgURL(gp.id))}" alt="" loading="lazy"><span>${gp.light==="blue"?"Az":"Br"} ${fmtDate(gp.d,true)}</span></button>`).join("")}</div></div>`:""}
+        </div>
+        <div style="display:grid;gap:18px">
+          <div class="form">
+            <div class="field wide"><label for="cf-name">Nome</label><input id="cf-name" data-cf="name" value="${esc(c.name)}"></div>
+            <div class="field"><label for="cf-group">Grupo</label><select id="cf-group" data-cf="group">${GROUPS.map(g=>`<option value="${g}" ${c.group===g?"selected":""}>${GROUP_LABEL[g]}</option>`).join("")}</select></div>
+            <div class="field"><label for="cf-zone">Zona do rack</label><select id="cf-zone" data-cf="zone">${Object.entries(ZONES).map(([k,l])=>`<option value="${k}" ${(c.zone||"")===k?"selected":""}>${l}</option>`).join("")}</select></div>
+            <div class="field"><label for="cf-origin">Origem</label><input id="cf-origin" data-cf="origin" value="${esc(c.origin||"")}" placeholder="Display, loja, leilão…"></div>
+            <div class="field"><label for="cf-added">Entrada no mudário</label><input id="cf-added" type="date" data-cf="addedAt" value="${esc(c.addedAt||"")}"></div>
+            <div class="field"><label for="cf-dip">Último dip</label><input id="cf-dip" type="date" data-cf="dippedAt" value="${esc(c.dippedAt||"")}"></div>
+            <div class="field" style="align-self:end"><label class="check"><input type="checkbox" data-cf="check" ${c.check?"checked":""}> Check</label></div>
+            <div class="field wide"><label for="cf-notes">Notas</label><textarea id="cf-notes" data-cf="notes" placeholder="Comportamento, PAR, pragas observadas, vizinhos…">${esc(c.notes||"")}</textarea></div>
+          </div>
+          <div class="sec">
+            <div class="sechead"><h3>Mudas</h3><button class="btn sm edit" data-act="addfrag">Adicionar muda</button></div>
+            <div class="frags">${frags||`<div class="card empty-state small">Nenhuma muda.</div>`}</div>
+          </div>
+          <div class="sec"><h3>Crescimento (pólipos nas mudas ativas)</h3><div class="card" style="padding:10px 12px">${growthSVG(c.history)}</div></div>
+          <div class="toolbar edit"><button class="btn sm ghost danger" data-act="delcoral">${S.confirm.coral?"Toque de novo para apagar este coral":"Apagar coral"}</button></div>
+        </div>
+      </div>
+    </div></div></div>`;
+}
+function modalTest(){
+  const t=S.editTest||{date:today(),time:"",qual:{}}; const isNew=!t.id;
+  return `<div class="overlay" data-act="bgclose"><div class="modal narrow" role="dialog" aria-modal="true" aria-label="Teste de água">
+    <div class="mhead"><h2>${isNew?"Registrar teste":"Editar teste"}</h2><button class="btn" data-act="close">Fechar</button></div>
+    <form class="mbody" id="testform">
+      <div class="form">
+        <div class="field"><label for="t-date">Data</label><input id="t-date" name="date" type="date" required value="${esc(t.date)}"></div>
+        <div class="field"><label for="t-time">Hora</label><input id="t-time" name="time" placeholder="~20h30" value="${esc(t.time||"")}"></div>
+        ${PARAMS.map(p=>`<div class="field"><label for="t-${p.k}">${p.l}${p.u?` (${p.u})`:""}</label><input id="t-${p.k}" name="${p.k}" inputmode="decimal" autocomplete="off" value="${t[p.k]!=null?esc(((t.qual||{})[p.k]||"")+String(t[p.k]).replace(".",",")):""}"><span class="hint">alvo ${p.alvo}</span></div>`).join("")}
+        <div class="field wide"><label for="t-obs">Observações</label><textarea id="t-obs" name="obs" placeholder="TPA, dosagens, novos corais, comportamento…">${esc(t.obs||"")}</textarea></div>
+      </div>
+      <span class="small muted">Use vírgula ou ponto. Para leituras abaixo da escala do kit, digite “&lt;0,01”. Campos vazios ficam sem medição.</span>
+      <div class="toolbar" style="justify-content:space-between">
+        ${isNew?"<span></span>":`<button type="button" class="btn ghost danger" data-act="deltest">${S.confirm.test?"Toque de novo para apagar":"Apagar teste"}</button>`}
+        <button type="submit" class="btn primary">Salvar teste</button></div>
+    </form></div></div>`;
+}
+function modalNewCoral(){
+  return `<div class="overlay" data-act="bgclose"><div class="modal narrow" role="dialog" aria-modal="true" aria-label="Novo coral">
+    <div class="mhead"><h2>Adicionar coral</h2><button class="btn" data-act="close">Fechar</button></div>
+    <form class="mbody" id="coralform">
+      <div class="form">
+        <div class="field wide"><label for="n-name">Nome</label><input id="n-name" name="name" required placeholder="Zoanthus Utter Chaos"></div>
+        <div class="field"><label for="n-group">Grupo</label><select id="n-group" name="group">${GROUPS.map(g=>`<option value="${g}">${GROUP_LABEL[g]}</option>`).join("")}</select></div>
+        <div class="field"><label for="n-polyps">Pólipos na primeira muda</label><input id="n-polyps" name="polyps" type="number" min="0" value="1"></div>
+        <div class="field"><label for="n-origin">Origem</label><input id="n-origin" name="origin" placeholder="Loja, leilão, display…"></div>
+        <div class="field"><label for="n-dip">Dip feito em</label><input id="n-dip" name="dippedAt" type="date" value="${today()}"></div>
+      </div>
+      <span class="small muted">Coral de terceiros entra só depois de dip e inspeção.</span>
+      <div class="toolbar" style="justify-content:flex-end"><button type="submit" class="btn primary">Adicionar</button></div>
+    </form></div></div>`;
+}
+function renderModal(){
+  const m=$("#modal"); if(!S.modalKind){ m.innerHTML=""; document.body.style.overflow=""; return; }
+  const ov=m.querySelector(".overlay"); const sc=ov?ov.scrollTop:0;
+  m.innerHTML = S.modalKind==="coral"?modalCoral(): S.modalKind==="test"?modalTest(): modalNewCoral();
+  document.body.style.overflow="hidden"; const nov=m.querySelector(".overlay"); if(nov) nov.scrollTop=sc;
+}
+function closeModal(){ if(S.modalKind==="coral" && S.draft) flushCoral(S.draft.id, true); S.modalKind=null; S.draft=null; S.editTest=null; S.confirm={}; renderModal(); }
+
+/* ---------- saving ---------- */
+const saveT={}, pending={}, chains={};
+function snapHistory(c){ const t=totals(c), d=today(); c.history=c.history||[]; const h=c.history; if(h.length&&h[h.length-1].d===d) h[h.length-1]={d,frags:t.frags,polyps:t.polyps}; else h.push({d,frags:t.frags,polyps:t.polyps}); }
+function snapFrag(f){ const d=today(); f.history=f.history||[]; const h=f.history; if(h.length&&h[h.length-1].d===d) h[h.length-1]={d,polyps:+f.polyps||0}; else h.push({d,polyps:+f.polyps||0}); }
+function saveCoral(delay){ const id=S.draft.id; pending[id]=true; clearTimeout(saveT[id]); saveT[id]=setTimeout(()=>flushCoral(id),delay??700); }
+function flushCoral(id, now){
+  if(!pending[id]) return; clearTimeout(saveT[id]);
+  const c = S.draft && S.draft.id===id ? clone(S.draft) : null; if(!c||!S.db){ pending[id]=false; return; }
+  delete c.id; c.updatedAt=new Date().toISOString();
+  chains[id]=(chains[id]||Promise.resolve()).then(()=>S.db.doc("corals/"+id).set(c)).then(()=>{ pending[id]=false; }).catch(e=>{ pending[id]=false; toast(errMsg(e),true); });
+}
+function fragById(fid){ return (S.draft.frags||[]).find(f=>f.id===fid); }
+function armConfirm(key){ if(S.confirm[key]) return true; S.confirm[key]=true; setTimeout(()=>{ if(S.confirm[key]){ S.confirm[key]=false; if(S.modalKind) renderModal(); } },4000); return false; }
+
+async function pickFile(){ return new Promise(res=>{ const i=document.createElement("input"); i.type="file"; i.accept="image/*"; i.style.display="none"; document.body.appendChild(i);
+  i.addEventListener("change",()=>{ res(i.files&&i.files[0]||null); i.remove(); }); i.click(); }); }
+async function loadImage(file){
+  const url=URL.createObjectURL(file); const img=new Image();
+  try{ await new Promise((r,j)=>{ img.onload=r; img.onerror=()=>j(new Error("img")); img.src=url; }); }
+  finally{ setTimeout(()=>URL.revokeObjectURL(url),1000); }
+  const w=img.naturalWidth,h=img.naturalHeight,k=Math.min(1,2400/Math.max(w,h));
+  const cv=document.createElement("canvas"); cv.width=Math.round(w*k); cv.height=Math.round(h*k);
+  const c=cv.getContext("2d"); c.imageSmoothingQuality="high"; c.drawImage(img,0,0,cv.width,cv.height); return cv;
+}
+function scaled(src,n){ const o=document.createElement("canvas"); o.width=o.height=n; const c=o.getContext("2d"); c.imageSmoothingQuality="high"; c.drawImage(src,0,0,n,n); return o; }
+function compactDataURL(cv){
+  for(const [n,q] of [[800,0.8],[800,0.68],[640,0.68],[520,0.6]]){ const d=scaled(cv,Math.min(n,cv.width)).toDataURL("image/jpeg",q); if(d.length<230000) return d; }
+  return null;
+}
+function openCropper(src){ return new Promise(resolve=>{
+  const host=$("#cropper"); let img=src;
+  host.innerHTML=`<div class="overlay crop-ov"><div class="modal narrow" role="dialog" aria-modal="true" aria-label="Recortar foto">
+    <div class="mhead"><h2>Recortar foto</h2><button class="btn" id="cr-cancel" type="button">Cancelar</button></div>
+    <div class="mbody">
+      <div class="cropbox"><canvas id="cr-cv" aria-label="Área de recorte quadrada"></canvas></div>
+      <div class="toolbar"><label for="cr-zoom" class="small muted">Zoom</label><input id="cr-zoom" type="range" min="1" max="5" step="0.01" value="1" style="flex:1;min-width:120px">
+        <button class="btn sm" id="cr-rot" type="button">Girar 90°</button></div>
+      <span class="small muted">Arraste a foto para posicionar. Dê zoom com dois dedos ou com o controle.</span>
+      <div class="toolbar" style="justify-content:flex-end"><button class="btn primary" id="cr-ok" type="button">Usar esta foto</button></div>
+    </div></div></div>`;
+  const cv=$("#cr-cv"), ctx=cv.getContext("2d"), box=cv.parentElement, zin=$("#cr-zoom");
+  const dpr=Math.min(2,window.devicePixelRatio||1); let V=0, base=1, z=1, ox=0, oy=0;
+  const sz=()=>{ V=box.clientWidth||320; cv.width=cv.height=Math.round(V*dpr); cv.style.width=cv.style.height=V+"px"; base=Math.max(V/img.width,V/img.height); };
+  const clamp=()=>{ const s=base*z; ox=Math.min(0,Math.max(V-img.width*s,ox)); oy=Math.min(0,Math.max(V-img.height*s,oy)); };
+  const center=()=>{ const s=base*z; ox=(V-img.width*s)/2; oy=(V-img.height*s)/2; };
+  const draw=()=>{ clamp(); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.fillStyle="#000"; ctx.fillRect(0,0,V,V); ctx.imageSmoothingQuality="high";
+    const s=base*z; ctx.drawImage(img,ox,oy,img.width*s,img.height*s);
+    ctx.strokeStyle="rgba(255,255,255,.35)"; ctx.lineWidth=1; ctx.beginPath();
+    for(let i=1;i<3;i++){ ctx.moveTo(V*i/3,0); ctx.lineTo(V*i/3,V); ctx.moveTo(0,V*i/3); ctx.lineTo(V,V*i/3); } ctx.stroke(); };
+  const zoomAt=(nz,px,py)=>{ nz=Math.min(5,Math.max(1,nz)); const s0=base*z, s1=base*nz; ox=px-(px-ox)*s1/s0; oy=py-(py-oy)*s1/s0; z=nz; zin.value=z; draw(); };
+  sz(); center(); draw();
+  const pts=new Map(); let pinch=null;
+  const pos=e=>{ const r=cv.getBoundingClientRect(); return {x:e.clientX-r.left,y:e.clientY-r.top}; };
+  cv.addEventListener("pointerdown",e=>{ try{cv.setPointerCapture(e.pointerId);}catch(_){} pts.set(e.pointerId,pos(e)); pinch=null; });
+  cv.addEventListener("pointermove",e=>{ if(!pts.has(e.pointerId)) return; const prev=pts.get(e.pointerId), cur=pos(e); pts.set(e.pointerId,cur);
+    if(pts.size===1){ ox+=cur.x-prev.x; oy+=cur.y-prev.y; draw(); return; }
+    const [a,b]=[...pts.values()]; const d=Math.hypot(a.x-b.x,a.y-b.y)||1, mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
+    if(pinch){ ox+=mx-pinch.mx; oy+=my-pinch.my; zoomAt(z*d/pinch.d,mx,my); } pinch={d,mx,my}; });
+  const up=e=>{ pts.delete(e.pointerId); pinch=null; }; cv.addEventListener("pointerup",up); cv.addEventListener("pointercancel",up);
+  cv.addEventListener("wheel",e=>{ e.preventDefault(); const p=pos(e); zoomAt(z*Math.exp(-e.deltaY*0.0015),p.x,p.y); },{passive:false});
+  zin.addEventListener("input",()=>zoomAt(+zin.value,V/2,V/2));
+  $("#cr-rot").addEventListener("click",()=>{ const r=document.createElement("canvas"); r.width=img.height; r.height=img.width; const c=r.getContext("2d"); c.translate(r.width,0); c.rotate(Math.PI/2); c.drawImage(img,0,0); img=r; base=Math.max(V/img.width,V/img.height); z=1; zin.value=1; center(); draw(); });
+  const onResize=()=>{ const s=base*z, fx=(V/2-ox)/s, fy=(V/2-oy)/s; sz(); const s2=base*z; ox=V/2-fx*s2; oy=V/2-fy*s2; draw(); };
+  window.addEventListener("resize",onResize);
+  const finish=v=>{ window.removeEventListener("resize",onResize); host.innerHTML=""; resolve(v); };
+  $("#cr-cancel").addEventListener("click",()=>finish(null));
+  $("#cr-ok").addEventListener("click",()=>{ const s=base*z; const OUT=Math.max(600,Math.min(1200,Math.round(V/s))); const k=OUT/V;
+    const o=document.createElement("canvas"); o.width=o.height=OUT; const c=o.getContext("2d"); c.imageSmoothingQuality="high";
+    c.drawImage(img,ox*k,oy*k,img.width*s*k,img.height*s*k); finish(o); });
+}); }
+async function uploadPhoto(){
+  if(!S.sb||!S.session){ toast("Entre na sua conta para enviar fotos.",true); return null; }
+  const f=await pickFile(); if(!f) return null;
+  let src; try{ src=await loadImage(f); }catch(e){ toast("Formato de imagem não suportado. Use JPG ou PNG.",true); return null; }
+  const cv=await openCropper(src); if(!cv) return null;
+  toast("Enviando foto…");
+  const blob=await new Promise(r=>cv.toBlob(r,"image/jpeg",0.86));
+  const path="p/"+today()+"-"+rid("")+".jpg";
+  const {error}=await S.sb.storage.from("photos").upload(path,blob,{contentType:"image/jpeg",cacheControl:"31536000",upsert:false});
+  if(error){ toast(errMsg(error),true); return null; }
+  return path;
+}
+document.addEventListener("error", e=>{ const im=e.target; if(im&&im.tagName==="IMG"&&im.dataset.pid) im.classList.add("broken"); }, true);
+
+/* ---------- actions ---------- */
+const A = {
+  async signout(){ await S.sb.auth.signOut(); },
+  exportar(){ const blob=new Blob([JSON.stringify({exportedAt:new Date().toISOString(),tests:S.tests,corals:S.corals},null,2)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="mudario-backup-"+today()+".json"; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},1000); },
+  authmode(){ S.signup=!S.signup; render(); },
+  light(el){ S.light=el.dataset.l; S.galleryPick=null; if(S.modalKind==="coral") renderModal(); render(); },
+  group(el){ S.group=el.dataset.g; render(); },
+  open(el){ openCoral(el.dataset.id); },
+  close(){ closeModal(); },
+  bgclose(el,e){ if(e.target===el) closeModal(); },
+  newtest(){ S.editTest=null; S.modalKind="test"; renderModal(); },
+  edittest(el){ const t=S.tests.find(x=>x.id===el.dataset.id); if(!t) return; S.editTest=clone(t); S.modalKind="test"; renderModal(); },
+  async deltest(){ if(!armConfirm("test")){ renderModal(); return; } const id=S.editTest.id; try{ await S.db.doc("tests/"+id).delete(); toast("Teste apagado"); closeModal(); }catch(e){ toast(errMsg(e),true); } },
+  newcoral(){ S.modalKind="newcoral"; renderModal(); setTimeout(()=>{const n=$("#n-name"); n&&n.focus();},30); },
+  gpick(el){ S.galleryPick = S.galleryPick===el.dataset.id?null:el.dataset.id; renderModal(); },
+  pol(el){ const f=fragById(el.dataset.frag); if(!f) return; f.polyps=Math.max(0,(+f.polyps||0)+(+el.dataset.d)); snapFrag(f); snapHistory(S.draft); renderModal(); saveCoral(900); },
+  addfrag(){ const c=S.draft; c.frags=c.frags||[]; const f={id:rid("f"),label:"Muda "+(c.frags.length+1),polyps:1,status:"crescendo",photos:{},history:[]}; snapFrag(f); c.frags.push(f); snapHistory(c); renderModal(); saveCoral(300); },
+  delfrag(el){ const k="f"+el.dataset.frag; if(!armConfirm(k)){ renderModal(); return; } S.confirm[k]=false; S.draft.frags=S.draft.frags.filter(f=>f.id!==el.dataset.frag); snapHistory(S.draft); renderModal(); saveCoral(200); },
+  async cover(el){ const l=el.dataset.l; const id=await uploadPhoto(); if(!id||!S.draft) return; const c=S.draft; c.cover=Object.assign({},c.cover,{[l]:id}); c.gallery=c.gallery||[]; c.gallery.push({id,light:l,d:today()}); S.light=l; S.galleryPick=null; renderModal(); saveCoral(0); toast("Foto salva"); },
+  async fragphoto(el){ const l=el.dataset.l, fid=el.dataset.frag; const id=await uploadPhoto(); if(!id||!S.draft) return; const f=fragById(fid); if(!f) return;
+    f.photos=Object.assign({},f.photos,{[l]:id}); f.photoDate=today(); const c=S.draft; c.gallery=c.gallery||[]; c.gallery.push({id,light:l,d:today(),frag:fid}); S.light=l; renderModal(); saveCoral(0); toast("Foto da muda salva"); },
+  async delcoral(){ if(!armConfirm("coral")){ renderModal(); return; } const id=S.draft.id; pending[id]=false; clearTimeout(saveT[id]);
+    try{ await S.db.doc("corals/"+id).delete(); toast("Coral apagado"); S.modalKind=null; S.draft=null; S.confirm={}; renderModal(); }catch(e){ toast(errMsg(e),true); } },
+};
+document.addEventListener("click", e=>{ const el=e.target.closest("[data-act]"); if(!el) return; const f=A[el.dataset.act]; if(!f) return; if(el.dataset.act!=="bgclose") e.preventDefault(); f(el,e); });
+document.addEventListener("keydown", e=>{ if(e.key==="Escape" && S.modalKind && !$("#cropper").innerHTML) closeModal(); });
+document.addEventListener("input", e=>{
+  const t=e.target;
+  if(t.id==="q"){ S.q=t.value; render(); return; }
+  if(!S.draft) return;
+  if(t.dataset.cf && t.type!=="checkbox" && t.tagName!=="SELECT"){ S.draft[t.dataset.cf]=t.value; if(t.dataset.cf==="name"){ const h=document.querySelector(".mhead h2"); if(h) h.textContent=t.value; } saveCoral(900); }
+  if(t.dataset.ff==="label"){ const f=fragById(t.dataset.frag); if(f){ f.label=t.value; saveCoral(900);} }
+  if(t.dataset.ff==="price"){ const f=fragById(t.dataset.frag); if(f){ const p=parseNum(t.value); f.price=p.v; saveCoral(900);} }
+});
+document.addEventListener("change", e=>{
+  const t=e.target; if(!S.draft) return;
+  if(t.dataset.cf==="check"){ S.draft.check=t.checked; saveCoral(200); }
+  else if(t.dataset.cf && (t.tagName==="SELECT"||t.type==="date")){ S.draft[t.dataset.cf]=t.value; saveCoral(200); }
+  if(t.dataset.ff==="status"){ const f=fragById(t.dataset.frag); if(f){ f.status=t.value; snapHistory(S.draft); renderModal(); saveCoral(200);} }
+});
+document.addEventListener("submit", async e=>{
+  e.preventDefault(); const fm=e.target; const fd=new FormData(fm);
+  if(fm.id==="loginform"){
+    const email=String(fd.get("email")).trim(), password=String(fd.get("password"));
+    if(S.signup){ const {error}=await S.sb.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}});
+      if(error) toast(error.message,true); else { S.signup=false; render(); setBanner("Conta criada. Abra o link de confirmação no seu e-mail e depois entre aqui."); } }
+    else { const {error}=await S.sb.auth.signInWithPassword({email,password}); if(error) toast(error.message==="Invalid login credentials"?"E-mail ou senha incorretos (ou e-mail ainda não confirmado).":error.message,true); }
+    return;
+  }
+  if(fm.id==="testform"){
+    if(!S.db){ toast("Banco indisponível nesta visualização.",true); return; }
+    const out={date:fd.get("date"), time:String(fd.get("time")||"").trim(), obs:String(fd.get("obs")||"").trim(), qual:{}};
+    for(const p of PARAMS){ const r=parseNum(fd.get(p.k)); if(r.bad){ toast(`Valor inválido em ${p.l}.`,true); return; } if(r.v!=null){ out[p.k]=r.v; if(r.q) out.qual[p.k]=r.q; } }
+    if(!out.date){ toast("Informe a data.",true); return; }
+    const id=(S.editTest&&S.editTest.id)||rid("t"); out.updatedAt=new Date().toISOString();
+    try{ await S.db.doc("tests/"+id).set(out); toast("Teste salvo"); closeModal(); }catch(err){ toast(errMsg(err),true); }
+  }
+  if(fm.id==="coralform"){
+    if(!S.db){ toast("Banco indisponível nesta visualização.",true); return; }
+    const name=String(fd.get("name")||"").trim(); if(!name) return;
+    const id=rid("c"); const f={id:rid("f"),label:"Muda 1",polyps:Math.max(0,+fd.get("polyps")||0),status:"matriz",photos:{},history:[]}; snapFrag(f);
+    const c={name,group:fd.get("group"),origin:String(fd.get("origin")||""),dippedAt:fd.get("dippedAt")||"",addedAt:today(),zone:"",notes:"",check:false,cover:{},gallery:[],frags:[f],history:[]}; snapHistory(c);
+    c.updatedAt=new Date().toISOString();
+    try{ await S.db.doc("corals/"+id).set(c); S.modalKind=null; renderModal(); S.corals.push(Object.assign({id},c)); openCoral(id); toast("Coral adicionado"); }catch(err){ toast(errMsg(err),true); }
+  }
+});
+
+/* ---------- routing ---------- */
+function route(){ const h=location.hash.replace("#",""); S.view=["painel","parametros","corais","vitrine"].includes(h)?h:"painel"; render(); }
+window.addEventListener("hashchange", route);
+route();
+
+/* ---------- data (Supabase) ---------- */
+function makeDB(sb){
+  const L={tests:[],corals:[]}, C={tests:new Map(),corals:new Map()};
+  const emit=col=>{ const docs=[...C[col].entries()].map(([id,d])=>({id,exists:true,data:()=>d})); L[col].forEach(f=>f({docs,metadata:{fromCache:false}})); };
+  async function load(col){ const {data,error}=await sb.from(col).select("id,data"); if(error) throw error; C[col]=new Map(data.map(r=>[r.id,r.data])); emit(col); }
+  return {
+    load, reload(){ return Promise.all(["tests","corals"].map(c=>load(c).catch(()=>{}))); },
+    reset(){ C.tests=new Map(); C.corals=new Map(); emit("tests"); emit("corals"); },
+    collection(col){ return { onSnapshot(next,err){ L[col].push(next); load(col).catch(e=>err&&err(e)); return ()=>{}; } }; },
+    doc(path){ const [col,id]=path.split("/"); return {
+      async set(data){ const {error}=await sb.from(col).upsert({id,data,updated_at:new Date().toISOString()}); if(error) throw error; C[col].set(id,clone(data)); emit(col); },
+      async delete(){ const {error}=await sb.from(col).delete().eq("id",id); if(error) throw error; C[col].delete(id); emit(col); } }; }
+  };
+}
+(async ()=>{
+  if(!window.supabase){ setBanner("Não foi possível carregar o app. Verifique a conexão e recarregue."); return; }
+  const sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+  S.sb=sb; S.db=makeDB(sb);
+  let subscribed=false;
+  const start=()=>{
+    if(subscribed){ S.db.reload(); return; } subscribed=true;
+    const timer=setTimeout(()=>setBanner("Os dados ainda não chegaram. Verifique a conexão."),10000);
+    let gt=false,gc=false; const done=()=>{ if(gt&&gc){ clearTimeout(timer); setBanner(""); } };
+    S.db.collection("tests").onSnapshot(s=>{ S.tests=s.docs.map(d=>Object.assign({id:d.id},d.data())); gt=true; done(); render(); }, e=>{ clearTimeout(timer); setBanner(errMsg(e)); });
+    S.db.collection("corals").onSnapshot(s=>{
+      S.corals=s.docs.map(d=>Object.assign({id:d.id},d.data())); gc=true; done();
+      if(gc&&S.session&&!S.corals.length&&!S.tests.length) setBanner("Nenhum dado visível para esta conta. Entre com o e-mail dono do mudário.");
+      render();
+      if(S.modalKind==="coral" && S.draft && !pending[S.draft.id]){
+        const fresh=S.corals.find(c=>c.id===S.draft.id);
+        if(!fresh){ S.modalKind=null; S.draft=null; renderModal(); }
+        else { const a=clone(fresh), b=clone(S.draft); delete a.updatedAt; delete b.updatedAt; if(JSON.stringify(a)!==JSON.stringify(b) && !document.activeElement.matches("input,textarea")){ S.draft=clone(fresh); renderModal(); } }
+      }
+    }, e=>{ clearTimeout(timer); setBanner(errMsg(e)); });
+  };
+  const {data:{session}}=await sb.auth.getSession();
+  S.session=session; S.authReady=true; setBanner("");
+  if(session) start(); render();
+  sb.auth.onAuthStateChange((ev,sess)=>{ const had=!!S.session; S.session=sess;
+    if(sess && !had){ setBanner(""); start(); }
+    if(!sess && had){ S.tests=[]; S.corals=[]; S.modalKind=null; S.draft=null; renderModal(); }
+    render(); });
+  document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible" && S.session && !S.modalKind) S.db.reload(); });
+})();
+if("serviceWorker" in navigator) window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+</script>
+</body>
+</html>
