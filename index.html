@@ -205,6 +205,28 @@ tr:last-child td{border-bottom:0}
 .vit-head{padding:18px;display:grid;gap:6px}
 .price{font-family:var(--mono);font-weight:500}
 .ro .edit{display:none !important}
+.fbar{display:grid;gap:8px}
+.frow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.fbar .search{max-width:none;flex:1 1 160px}
+.fbtn{gap:6px}
+.fbtn .badge{background:var(--accent);color:var(--accent-ink);border-radius:999px;font-size:11px;line-height:18px;min-width:18px;padding:0 5px;text-align:center}
+.fbtn .chev{display:inline-block;transition:transform .2s;font-size:12px;color:var(--muted)}
+.fbtn[aria-expanded="true"] .chev{transform:rotate(180deg)}
+.fpanel{padding:12px 14px;display:grid;gap:12px}
+.fpanel select{padding:8px 10px;border-radius:9px;border:1px solid var(--line);background:var(--surface);width:100%}
+.flabel{font-size:12px;color:var(--muted);font-weight:500}
+.seg.lay button{padding:7px 10px}
+.grid.list{grid-template-columns:1fr;gap:8px}
+.grid.list .ccard{grid-template-columns:96px minmax(0,1fr);align-items:center}
+.grid.list .ccard .ph{width:96px;height:96px}
+.grid.list .ccard .ph.empty{font-size:22px}
+.grid.list .ccard .ph .tag{font-size:10px;padding:1px 6px;left:4px;bottom:4px}
+.grid.list .ccard .ph .tagr{left:auto;right:4px;top:4px;bottom:auto}
+.charts.list{grid-template-columns:1fr}
+.tiles.list{grid-template-columns:1fr;gap:6px}
+.tiles.list .tile{grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:12px;padding:10px 14px}
+.tiles.list .tile .val{grid-column:2;grid-row:1 / span 2;text-align:right;font-size:20px}
+.tiles.list .tile .meta{grid-column:1}
 .mfoot{position:sticky;bottom:0;z-index:2;background:var(--bg);border-top:1px solid var(--line);padding:12px 18px calc(12px + env(safe-area-inset-bottom));display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap;border-radius:0 0 16px 16px}
 .mfoot .st{margin-right:auto;font-size:13px;color:var(--muted)}
 .mfoot.dirty .st{color:var(--warn);font-weight:500}
@@ -254,7 +276,7 @@ tr:last-child td{border-bottom:0}
 "use strict";
 const SB_URL="https://dkypcjxvtvgsbdovlkpk.supabase.co";
 const SB_KEY="sb_publishable_8I4n91ShSDsf6HRzq2R1Gg_D599BYlW";
-const APP_VERSION="v6";
+const APP_VERSION="v8";
 function fail(msg){ const b=document.getElementById("banner"); if(b) b.textContent=(msg+" ["+APP_VERSION+"]"); const r=document.getElementById("retry"); if(r) r.hidden=false; }
 window.addEventListener("error",e=>{ if(e.target&&e.target.tagName) return; fail("Erro no app: "+(e.message||"desconhecido")); });
 window.addEventListener("unhandledrejection",e=>{ const m=(e.reason&&e.reason.message)||String(e.reason||""); if(/Failed to fetch|NetworkError|Load failed/i.test(m)) fail("Sem conexão com o banco de dados. Verifique a internet."); else fail("Erro no app: "+m); });
@@ -337,12 +359,12 @@ function vPainel(){
   <section class="sec">
     <div class="sechead"><h2>Últimas leituras</h2>
       <div class="toolbar"><span class="small muted">Dia ${dayN(today())} desde a ciclagem${last?` · último teste ${fmtDate(last.date)}`:""}</span>
-      <button class="btn primary edit" data-act="newtest">Registrar teste</button></div></div>
-    <div class="tiles">${tiles}</div>
+      ${laySeg("painel")}<button class="btn primary edit" data-act="newtest">Registrar teste</button></div></div>
+    <div class="tiles ${lay("painel")}">${tiles}</div>
   </section>
   <section class="sec">
     <div class="sechead"><h2>Estoque</h2><a class="btn ghost sm" href="#corais">Ver corais</a></div>
-    <div class="tiles stock">
+    <div class="tiles stock ${lay("painel")}">
       <div class="card tile"><span class="lab">Corais (variedades)</span><span class="val num">${all.length}</span></div>
       <div class="card tile"><span class="lab">Mudas ativas</span><span class="val num">${fr}</span></div>
       <div class="card tile"><span class="lab">Pólipos</span><span class="val num">${po}</span></div>
@@ -392,9 +414,9 @@ function vParametros(){
      <td class="edit"><button class="btn sm ghost" data-act="edittest" data-id="${esc(t.id)}">Editar</button></td></tr>`).join("");
   return `
   <section class="sec">
-    <div class="sechead"><h2>Parâmetros</h2><button class="btn primary edit" data-act="newtest">Registrar teste</button></div>
+    <div class="sechead"><h2>Parâmetros</h2><div class="toolbar">${laySeg("parametros")}<button class="btn primary edit" data-act="newtest">Registrar teste</button></div></div>
     <p class="small muted" style="margin:0">Faixa azul = alvo do projeto. Ponto cheio = última medição, colorido pelo status.</p>
-    <div class="charts">${charts}</div>
+    <div class="charts ${lay("parametros")}">${charts}</div>
   </section>
   <section class="sec">
     <h2>Histórico de testes</h2>
@@ -403,25 +425,70 @@ function vParametros(){
   </section>`;
 }
 
-function vCorais(){
-  const q=S.q.trim().toLowerCase();
-  const list=S.corals.filter(c=>(!S.group||c.group===S.group)&&(!q||String(c.name).toLowerCase().includes(q))).sort((a,b)=>String(a.name).localeCompare(b.name,"pt-BR"));
+S.layout=(()=>{ try{ return JSON.parse(localStorage.getItem("ty-layout")||"{}"); }catch(e){ return {}; } })();
+const lay=v=>S.layout[v]==="list"?"list":"grid";
+const IC_GRID='<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1.2" fill="currentColor"/><rect x="9" y="1.5" width="5.5" height="5.5" rx="1.2" fill="currentColor"/><rect x="1.5" y="9" width="5.5" height="5.5" rx="1.2" fill="currentColor"/><rect x="9" y="9" width="5.5" height="5.5" rx="1.2" fill="currentColor"/></svg>';
+const IC_LIST='<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><rect x="1.5" y="2" width="3.5" height="3.5" rx="1" fill="currentColor"/><rect x="6.5" y="2.75" width="8" height="2" rx="1" fill="currentColor"/><rect x="1.5" y="6.25" width="3.5" height="3.5" rx="1" fill="currentColor"/><rect x="6.5" y="7" width="8" height="2" rx="1" fill="currentColor"/><rect x="1.5" y="10.5" width="3.5" height="3.5" rx="1" fill="currentColor"/><rect x="6.5" y="11.25" width="8" height="2" rx="1" fill="currentColor"/></svg>';
+function laySeg(v){ const m=lay(v); return `<div class="seg lay" role="group" aria-label="Modo de exibição"><button data-act="layout" data-m="grid" aria-pressed="${m==="grid"}" aria-label="Galeria" title="Galeria">${IC_GRID}</button><button data-act="layout" data-m="list" aria-pressed="${m==="list"}" aria-label="Lista" title="Lista">${IC_LIST}</button></div>`; }
+const SORTS=[["name","Nome (A–Z)"],["polyps","Pólipos (mais → menos)"],["added_asc","Entrada no tanque (mais antigo primeiro)"],["added_desc","Entrada no tanque (mais recente primeiro)"],["price_asc","Preço (menor → maior)"],["price_desc","Preço (maior → menor)"]];
+const PHOTO_F=[["","Todas"],["blue","Com foto azul"],["white","Com foto branca"],["none","Sem foto"]];
+const F_DEFAULT={q:"",sort:"name",group:"",photo:""};
+S.F=(()=>{ let saved={}; try{ saved=JSON.parse(localStorage.getItem("ty-filters")||"{}"); }catch(e){}
+  const mk=k=>Object.assign({},F_DEFAULT,saved[k]||{},{q:""}); return {corais:mk("corais"),vitrine:mk("vitrine")}; })();
+function saveF(){ try{ const o={}; for(const k of ["corais","vitrine"]){ const {q,...rest}=S.F[k]; o[k]=rest; } localStorage.setItem("ty-filters",JSON.stringify(o)); }catch(e){} }
+function coralPrice(c){ const ps=(c.frags||[]).filter(f=>!INACTIVE.has(f.status)&&+f.price>0).map(f=>+f.price); return ps.length?Math.min(...ps):null; }
+function hasPhoto(c,f,l){ if(f) return !!((f.photos||{})[l]||(c.cover||{})[l]); return !!((c.cover||{})[l]||(c.frags||[]).some(x=>(x.photos||{})[l])); }
+function applyF(items,F){
+  const q=F.q.trim().toLowerCase();
+  let out=items.filter(it=>(!F.group||it.c.group===F.group)&&(!q||String(it.c.name).toLowerCase().includes(q)));
+  if(F.photo==="blue") out=out.filter(it=>hasPhoto(it.c,it.f,"blue"));
+  else if(F.photo==="white") out=out.filter(it=>hasPhoto(it.c,it.f,"white"));
+  else if(F.photo==="none") out=out.filter(it=>!hasPhoto(it.c,it.f,"blue")&&!hasPhoto(it.c,it.f,"white"));
+  const byName=(a,b)=>String(a.c.name).localeCompare(String(b.c.name),"pt-BR");
+  const nullsLast=(x,y,dir)=>{ if(x==null&&y==null) return 0; if(x==null) return 1; if(y==null) return -1; return dir*(x<y?-1:x>y?1:0); };
+  const cmp={
+    name:byName,
+    polyps:(a,b)=>(b.polyps-a.polyps)||byName(a,b),
+    added_asc:(a,b)=>nullsLast(a.added||null,b.added||null,1)||byName(a,b),
+    added_desc:(a,b)=>nullsLast(a.added||null,b.added||null,-1)||byName(a,b),
+    price_asc:(a,b)=>nullsLast(a.price,b.price,1)||byName(a,b),
+    price_desc:(a,b)=>nullsLast(a.price,b.price,-1)||byName(a,b),
+  }[F.sort]||byName;
+  return out.sort(cmp);
+}
+function filterBar(view,count,total){
+  const F=S.F[view]; const n=(F.sort!=="name")+(F.group?1:0)+(F.photo?1:0);
   const used=GROUPS.filter(g=>S.corals.some(c=>c.group===g));
-  const cards=list.map(c=>{const t=totals(c); const avail=t.avail?`<span class="tag tagr">${t.avail} à venda</span>`:"";
+  const chip=(k,v,l)=>`<button data-act="fset" data-k="${k}" data-v="${v}" aria-pressed="${F[k]===v}">${l}</button>`;
+  const sortLabel=(SORTS.find(x=>x[0]===F.sort)||SORTS[0])[1];
+  return `<div class="fbar">
+    <div class="frow"><input class="search" id="q" type="search" placeholder="Buscar por nome" value="${esc(F.q)}" aria-label="Buscar por nome">
+      <button class="btn fbtn" data-act="ftoggle" aria-expanded="${!!S.fOpen}" aria-controls="fpanel">Filtros${n?` <span class="badge">${n}</span>`:""}<span class="chev" aria-hidden="true">▾</span></button></div>
+    ${S.fOpen?`<div class="card fpanel" id="fpanel">
+      <div class="field"><label for="f-sort">Ordenar por</label><select id="f-sort" data-fk="sort">${SORTS.map(([k,l])=>`<option value="${k}" ${F.sort===k?"selected":""}>${l}</option>`).join("")}</select></div>
+      <div class="field"><span class="flabel">Grupo</span><div class="filters">${chip("group","","Todos")}${used.map(g=>chip("group",g,GROUP_LABEL[g])).join("")}</div></div>
+      <div class="field"><span class="flabel">Foto</span><div class="filters">${PHOTO_F.map(([k,l])=>chip("photo",k,l)).join("")}</div></div>
+      <div class="frow"><span class="small muted">Mostrando ${count} de ${total}</span><span style="margin-left:auto;display:flex;gap:6px"><button class="btn ghost sm" data-act="fclear" ${n?"":"disabled"}>Limpar</button><button class="btn sm" data-act="ftoggle">Fechar</button></span></div>
+    </div>`:(n||F.q?`<span class="small muted">${count} de ${total}${F.sort!=="name"?" · "+sortLabel:""}</span>`:"")}
+  </div>`;
+}
+function vCorais(){
+  const all=S.corals.map(c=>{ const t=totals(c); return {c,polyps:t.polyps,added:c.addedAt||"",price:coralPrice(c)}; });
+  const list=applyF(all,S.F.corais);
+  const cards=list.map(({c})=>{const t=totals(c); const avail=t.avail?`<span class="tag tagr">${t.avail} à venda</span>`:"";
     return `<button class="ccard" data-act="open" data-id="${esc(c.id)}">${photoBox(c,S.light,avail)}
       <div class="info"><span class="name">${esc(c.name)}</span><span class="stats num">${t.frags} muda${t.frags===1?"":"s"} · ${t.polyps} pólipo${t.polyps===1?"":"s"}</span>
       <span><span class="chip neutral">${esc(GROUP_LABEL[c.group]||c.group||"—")}</span></span></div></button>`;}).join("");
   return `<section class="sec">
-    <div class="sechead"><h2>Corais</h2><div class="toolbar">${lightSeg()}<button class="btn primary edit" data-act="newcoral">Adicionar coral</button></div></div>
-    <div class="toolbar"><input class="search" id="q" type="search" placeholder="Buscar por nome" value="${esc(S.q)}" aria-label="Buscar coral">
-      <div class="filters"><button data-act="group" data-g="" aria-pressed="${!S.group}">Todos</button>${used.map(g=>`<button data-act="group" data-g="${g}" aria-pressed="${S.group===g}">${GROUP_LABEL[g]}</button>`).join("")}</div></div>
-    ${cards?`<div class="grid">${cards}</div>`:`<div class="card empty-state">${S.corals.length?"Nenhum coral com esse filtro.":"Nenhum coral cadastrado ainda."}</div>`}
+    <div class="sechead"><h2>Corais</h2><div class="toolbar">${lightSeg()}${laySeg("corais")}<button class="btn primary edit" data-act="newcoral">Adicionar</button></div></div>
+    ${filterBar("corais",list.length,all.length)}
+    ${cards?`<div class="grid ${lay("corais")}">${cards}</div>`:`<div class="card empty-state">${S.corals.length?"Nenhum coral com esses filtros.":"Nenhum coral cadastrado ainda."}</div>`}
   </section>`;
 }
 
 function vVitrine(){
-  const items=[]; S.corals.forEach(c=>(c.frags||[]).forEach(f=>{ if(f.status==="disponivel") items.push({c,f}); }));
-  items.sort((a,b)=>String(a.c.name).localeCompare(b.c.name,"pt-BR"));
+  const all=[]; S.corals.forEach(c=>(c.frags||[]).forEach(f=>{ if(f.status==="disponivel") all.push({c,f,polyps:+f.polyps||0,added:c.addedAt||"",price:+f.price>0?+f.price:null}); }));
+  const items=applyF(all,S.F.vitrine);
   const cards=items.map(({c,f})=>`<button class="ccard" data-act="open" data-id="${esc(c.id)}">${photoBox(c,S.light,"",f)}
      <div class="info"><span class="name">${esc(c.name)}</span>
      <span class="stats num">${esc(f.label||"Muda")} · ${+f.polyps||0} pólipo${(+f.polyps||0)===1?"":"s"}</span>
@@ -429,8 +496,9 @@ function vVitrine(){
      ${f.photoDate?`<span class="small muted">foto de ${fmtDate(f.photoDate)}</span>`:""}</div></button>`).join("");
   return `<section class="sec">
     <div class="card vit-head"><h2>Vitrine</h2><span class="muted small">Cada foto é da muda que está à venda, sob luz azul e branca. O que você vê é o que leva.</span>
-      <div class="toolbar">${lightSeg()}<span class="chip acc">${items.length} muda${items.length===1?"":"s"} disponíve${items.length===1?"l":"is"}</span></div></div>
-    ${cards?`<div class="grid">${cards}</div>`:`<div class="card empty-state"><span>Nenhuma muda marcada como <b>Disponível</b>.</span><span class="small">Abra um coral, mude o status da muda para Disponível e envie a foto dela.</span></div>`}
+      <div class="toolbar">${lightSeg()}${laySeg("vitrine")}<span class="chip acc">${all.length} muda${all.length===1?"":"s"} disponíve${all.length===1?"l":"is"}</span></div></div>
+    ${all.length?filterBar("vitrine",items.length,all.length):""}
+    ${cards?`<div class="grid ${lay("vitrine")}">${cards}</div>`:all.length?`<div class="card empty-state">Nenhuma muda com esses filtros.</div>`:`<div class="card empty-state"><span>Nenhuma muda marcada como <b>Disponível</b>.</span><span class="small">Abra um coral, mude o status da muda para Disponível e envie a foto dela.</span></div>`}
   </section>`;
 }
 
@@ -725,7 +793,10 @@ const A = {
   keepediting(){ S.confirmClose=false; renderModal(); },
   cancelpass(){ S.recovery=false; render(); },
   light(el){ S.light=el.dataset.l; S.galleryPick=null; if(S.modalKind==="coral") renderModal(); render(); },
-  group(el){ S.group=el.dataset.g; render(); },
+  ftoggle(){ S.fOpen=!S.fOpen; render(); },
+  layout(el){ S.layout[S.view]=el.dataset.m; try{ localStorage.setItem("ty-layout",JSON.stringify(S.layout)); }catch(e){} render(); },
+  fset(el){ const F=S.F[S.view]; if(!F) return; F[el.dataset.k]=el.dataset.v; saveF(); render(); },
+  fclear(){ const F=S.F[S.view]; if(!F) return; Object.assign(F,{sort:"name",group:"",photo:""}); saveF(); render(); },
   open(el){ openCoral(el.dataset.id); },
   close(){ closeModal(); },
   bgclose(el,e){ if(e.target===el) closeModal(); },
@@ -747,14 +818,16 @@ document.addEventListener("click", e=>{ const el=e.target.closest("[data-act]");
 document.addEventListener("keydown", e=>{ if(e.key==="Escape" && S.modalKind && !$("#cropper").innerHTML) closeModal(); });
 document.addEventListener("input", e=>{
   const t=e.target;
-  if(t.id==="q"){ S.q=t.value; render(); return; }
+  if(t.id==="q"){ if(S.F[S.view]){ S.F[S.view].q=t.value; render(); } return; }
   if(!S.draft) return;
   if(t.dataset.cf && t.type!=="checkbox" && t.tagName!=="SELECT"){ S.draft[t.dataset.cf]=t.value; if(t.dataset.cf==="name"){ const h=document.querySelector(".mhead h2"); if(h) h.textContent=t.value; } saveCoral(900); }
   if(t.dataset.ff==="label"){ const f=fragById(t.dataset.frag); if(f){ f.label=t.value; saveCoral(900);} }
   if(t.dataset.ff==="price"){ const f=fragById(t.dataset.frag); if(f){ const p=parseNum(t.value); f.price=p.v; saveCoral(900);} }
 });
 document.addEventListener("change", e=>{
-  const t=e.target; if(!S.draft) return;
+  const t=e.target;
+  if(t.dataset.fk && S.F[S.view]){ S.F[S.view][t.dataset.fk]=t.value; saveF(); render(); return; }
+  if(!S.draft) return;
   if(t.dataset.cf==="check"){ S.draft.check=t.checked; saveCoral(200); }
   else if(t.dataset.cf && (t.tagName==="SELECT"||t.type==="date")){ S.draft[t.dataset.cf]=t.value; saveCoral(200); }
   if(t.dataset.ff==="status"){ const f=fragById(t.dataset.frag); if(f){ f.status=t.value; snapHistory(S.draft); renderModal(); saveCoral(200);} }
