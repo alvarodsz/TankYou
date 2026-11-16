@@ -325,7 +325,7 @@ tr:last-child td{border-bottom:0}
 "use strict";
 const SB_URL="https://dkypcjxvtvgsbdovlkpk.supabase.co";
 const SB_KEY="sb_publishable_8I4n91ShSDsf6HRzq2R1Gg_D599BYlW";
-const APP_VERSION="v16";
+const APP_VERSION="v17";
 function fail(msg){ const b=document.getElementById("banner"); if(b) b.textContent=(msg+" ["+APP_VERSION+"]"); const r=document.getElementById("retry"); if(r) r.hidden=false; }
 window.addEventListener("error",e=>{ if(e.target&&e.target.tagName) return; fail("Erro no app: "+(e.message||"desconhecido")); });
 window.addEventListener("unhandledrejection",e=>{ const m=(e.reason&&e.reason.message)||String(e.reason||""); if(/Failed to fetch|NetworkError|Load failed/i.test(m)) fail("Sem conexão com o banco de dados. Verifique a internet."); else fail("Erro no app: "+m); });
@@ -445,7 +445,7 @@ function vPainel(){
     <div class="tiles ${lay("painel")}">${tiles}</div>
   </section>
   <section class="sec">
-    <div class="sechead"><h2>Estoque</h2><a class="btn ghost sm" href="#corais">Ver corais</a></div>
+    <div class="sechead"><h2>Estoque</h2></div>
     <div class="tiles stock ${lay("painel")}">
       <div class="card tile"><span class="lab">Corais (variedades)</span><span class="val num">${all.length}</span></div>
       <div class="card tile"><span class="lab">Mudas ativas</span><span class="val num">${fr}</span></div>
