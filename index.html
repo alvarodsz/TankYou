@@ -246,8 +246,10 @@ tr:last-child td{border-bottom:0}
 .webp .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .webp .steps{margin:0;padding-left:18px;display:grid;gap:2px}
 .webp a.btn{text-decoration:none;justify-content:flex-start;text-align:left}
-.ph.rot img{position:absolute;inset:0;opacity:0;transition:opacity .6s ease}
-.ph.rot img.on{opacity:1}
+.ph.rot .rs{position:absolute;inset:0;opacity:0;transition:opacity .6s ease}
+.ph.rot .rs.on{opacity:1}
+.ph.rot .rs img{width:100%;height:100%;object-fit:cover;display:block}
+.ph .tagl{display:inline-flex;align-items:center;gap:5px}
 .ph .tagcount{left:auto;right:8px;top:8px;bottom:auto;background:rgba(5,10,20,.6)}
 .ph.rot .tagr{top:auto;bottom:8px}
 .carwrap{position:relative}
@@ -322,7 +324,7 @@ tr:last-child td{border-bottom:0}
 "use strict";
 const SB_URL="https://dkypcjxvtvgsbdovlkpk.supabase.co";
 const SB_KEY="sb_publishable_8I4n91ShSDsf6HRzq2R1Gg_D599BYlW";
-const APP_VERSION="v14";
+const APP_VERSION="v15";
 function fail(msg){ const b=document.getElementById("banner"); if(b) b.textContent=(msg+" ["+APP_VERSION+"]"); const r=document.getElementById("retry"); if(r) r.hidden=false; }
 window.addEventListener("error",e=>{ if(e.target&&e.target.tagName) return; fail("Erro no app: "+(e.message||"desconhecido")); });
 window.addEventListener("unhandledrejection",e=>{ const m=(e.reason&&e.reason.message)||String(e.reason||""); if(/Failed to fetch|NetworkError|Load failed/i.test(m)) fail("Sem conexão com o banco de dados. Verifique a internet."); else fail("Erro no app: "+m); });
@@ -402,7 +404,7 @@ function photoBox(c, light, extraTag, frag, rotate){
     let list=photosFor(c,light), fb=false; if(!list.length){ list=photosFor(c,light==="blue"?"white":"blue"); fb=true; }
     if(list.length>1){
       const ref=id=>(c.gallery||[]).some(g=>g.id===id&&g.ref);
-      return `<div class="ph rot">${list.map((id,i)=>`<img data-pid="${esc(id)}" class="${i===0?"on":""}" src="${esc(imgURL(id))}" alt="${esc(c.name)}" loading="lazy">`).join("")}${fb?`<span class="tag">só luz ${light==="blue"?"branca":"azul"}</span>`:""}${ref(list[0])?`<span class="tag tagref">referência</span>`:""}<span class="tag tagcount">${list.length} fotos</span>${extraTag||""}</div>`;
+      return `<div class="ph rot">${list.map((id,i)=>`<div class="rs ${i===0?"on":""}"><img data-pid="${esc(id)}" src="${esc(imgURL(id))}" alt="${esc(c.name)}" loading="lazy"></div>`).join("")}${fb?`<span class="tag">só luz ${light==="blue"?"branca":"azul"}</span>`:""}${ref(list[0])?`<span class="tag tagref">referência</span>`:""}<span class="tag tagcount">${list.length} fotos</span>${extraTag||""}</div>`;
     }
   }
   let pick = null;
@@ -504,6 +506,7 @@ function vParametros(){
   </section>`;
 }
 
+S.vitLight=(()=>{ try{ return localStorage.getItem("ty-vitlight")||"auto"; }catch(e){ return "auto"; } })();
 S.layout=(()=>{ try{ return JSON.parse(localStorage.getItem("ty-layout")||"{}"); }catch(e){ return {}; } })();
 const lay=v=>S.layout[v]==="list"?"list":"grid";
 const IC_GRID='<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1.2" fill="currentColor"/><rect x="9" y="1.5" width="5.5" height="5.5" rx="1.2" fill="currentColor"/><rect x="1.5" y="9" width="5.5" height="5.5" rx="1.2" fill="currentColor"/><rect x="9" y="9" width="5.5" height="5.5" rx="1.2" fill="currentColor"/></svg>';
@@ -565,17 +568,27 @@ function vCorais(){
   </section>`;
 }
 
+function vitPhoto(c,f){
+  const mode=S.vitLight||"auto";
+  if(mode!=="auto") return photoBox(c,mode,"",f);
+  const pick=l=>(f.photos||{})[l]||(c.cover||{})[l];
+  const ids=[["blue",pick("blue")],["white",pick("white")]].filter(x=>x[1]);
+  if(ids.length<2) return photoBox(c,ids[0]?ids[0][0]:"blue","",f);
+  return `<div class="ph rot">${ids.map(([l,id],i)=>`<div class="rs ${i?"":"on"}"><img data-pid="${esc(id)}" src="${esc(imgURL(id))}" alt="${esc(c.name)} sob luz ${l==="blue"?"azul":"branca"}" loading="lazy"><span class="tag tagl"><span class="dot ${l}"></span>${l==="blue"?"Azul":"Branca"}</span></div>`).join("")}</div>`;
+}
+function vitSeg(){ const m=S.vitLight||"auto"; const b=(k,l,dot)=>`<button data-act="vitlight" data-l="${k}" aria-pressed="${m===k}">${dot?`<span class="dot ${dot}"></span>`:""}${l}</button>`;
+  return `<div class="seg" role="group" aria-label="Luz das fotos">${b("auto","Alternar")}${b("blue","Azul","blue")}${b("white","Branca","white")}</div>`; }
 function vVitrine(){
   const all=[]; S.corals.forEach(c=>(c.frags||[]).forEach(f=>{ if(f.status==="disponivel") all.push({c,f,polyps:+f.polyps||0,added:c.addedAt||"",price:+f.price>0?+f.price:null}); }));
   const items=applyF(all,S.F.vitrine);
-  const cards=items.map(({c,f})=>`<button class="ccard" data-act="open" data-id="${esc(c.id)}">${photoBox(c,S.light,"",f)}
+  const cards=items.map(({c,f})=>`<button class="ccard" data-act="open" data-id="${esc(c.id)}">${vitPhoto(c,f)}
      <div class="info"><span class="name">${esc(c.name)}</span>
      <span class="stats num">${esc(f.label||"Muda")} · ${+f.polyps||0} pólipo${(+f.polyps||0)===1?"":"s"}</span>
      <span class="price">${f.price?("R$ "+fmt(f.price,0)):"Sob consulta"}</span>
      ${f.photoDate?`<span class="small muted">foto de ${fmtDate(f.photoDate)}</span>`:""}</div></button>`).join("");
   return `<section class="sec">
     <div class="card vit-head"><h2>Vitrine</h2><span class="muted small">Cada foto é da muda que está à venda, sob luz azul e branca. O que você vê é o que leva.</span>
-      <div class="toolbar">${lightSeg()}${laySeg("vitrine")}<span class="chip acc">${all.length} muda${all.length===1?"":"s"} disponíve${all.length===1?"l":"is"}</span></div></div>
+      <div class="toolbar">${vitSeg()}${laySeg("vitrine")}<span class="chip acc">${all.length} muda${all.length===1?"":"s"} disponíve${all.length===1?"l":"is"}</span></div></div>
     ${all.length?filterBar("vitrine",items.length,all.length):""}
     ${cards?`<div class="grid ${lay("vitrine")}">${cards}</div>`:all.length?`<div class="card empty-state">Nenhuma muda com esses filtros.</div>`:`<div class="card empty-state"><span>Nenhuma muda marcada como <b>Disponível</b>.</span><span class="small">Abra um coral, mude o status da muda para Disponível e envie a foto dela.</span></div>`}
   </section>`;
@@ -991,6 +1004,7 @@ const A = {
     for(const l of ["blue","white"]){ if(c.cover[l]===id){ const nxt=gallerySorted(c).find(g=>g.light===l&&!g.frag); if(nxt) c.cover[l]=nxt.id; else delete c.cover[l]; } }
     (c.frags||[]).forEach(f=>{ if(f.photos){ for(const l of ["blue","white"]) if(f.photos[l]===id) delete f.photos[l]; } });
     (S.pendingDeletes=S.pendingDeletes||[]).push(id); renderModal(); saveCoral(); toast("Foto removida. Toque em Salvar alterações."); },
+  vitlight(el){ S.vitLight=el.dataset.l; try{ localStorage.setItem("ty-vitlight",S.vitLight); }catch(e){} render(); },
   carprev(){ const c=$("#car"); if(c) c.scrollBy({left:-c.clientWidth,behavior:"smooth"}); },
   carnext(){ const c=$("#car"); if(c) c.scrollBy({left:c.clientWidth,behavior:"smooth"}); },
   pol(el){ const f=fragById(el.dataset.frag); if(!f) return; f.polyps=Math.max(0,(+f.polyps||0)+(+el.dataset.d)); snapFrag(f); snapHistory(S.draft); renderModal(); saveCoral(900); },
@@ -1133,7 +1147,7 @@ try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist(
 ["gesturestart","gesturechange","gestureend"].forEach(ev=>document.addEventListener(ev,e=>{ if(!(e.target&&e.target.closest&&e.target.closest(".cropbox"))) e.preventDefault(); },{passive:false}));
 document.addEventListener("touchmove",e=>{ if(e.touches&&e.touches.length>1&&!(e.target&&e.target.closest&&e.target.closest(".cropbox"))) e.preventDefault(); },{passive:false});
 const reduceMotion=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-setInterval(()=>{ if(document.hidden||reduceMotion) return; document.querySelectorAll("#view .ph.rot").forEach(el=>{ const imgs=el.querySelectorAll("img"); if(imgs.length<2) return; let i=[...imgs].findIndex(x=>x.classList.contains("on")); if(i<0) i=0; imgs[i].classList.remove("on"); imgs[(i+1)%imgs.length].classList.add("on"); }); },2000);
+setInterval(()=>{ if(document.hidden||reduceMotion) return; document.querySelectorAll("#view .ph.rot").forEach(el=>{ const sl=el.querySelectorAll(":scope > .rs"); if(sl.length<2) return; let i=[...sl].findIndex(x=>x.classList.contains("on")); if(i<0) i=0; sl[i].classList.remove("on"); sl[(i+1)%sl.length].classList.add("on"); }); },2000);
 if("serviceWorker" in navigator) window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
 </script>
 </body>
